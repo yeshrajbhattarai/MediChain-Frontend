@@ -7,11 +7,10 @@ import { getProfile } from '../../auth_store/profileStore'
 import { getPayload } from '../../auth_store/authStore'
 
 const TECH_NAV = [
-  { label: 'Dashboard',   path: '/technician/dashboard',   icon: 'https://cdn.lordicon.com/oeotfwsx.json' },
-  { label: 'My Patients', path: '/technician/patients',    icon: 'https://cdn.lordicon.com/nklmjzzm.json' },
-  { label: 'Lab Queue',   path: '/technician/lab-queue',   icon: 'https://cdn.lordicon.com/nfuackpv.json' },
-  { label: 'My Records',  path: '/technician/records',     icon: 'https://cdn.lordicon.com/jgukeevf.json' },
-  { label: 'Profile',     path: '/technician/profile',     icon: 'https://cdn.lordicon.com/bgebyztw.json' },
+  { label: 'Dashboard',  path: '/technician/dashboard', icon: 'https://cdn.lordicon.com/oeotfwsx.json' },
+  { label: 'Lab Queue',  path: '/technician/lab-queue', icon: 'https://cdn.lordicon.com/nfuackpv.json' },
+  { label: 'My Records', path: '/technician/records',   icon: 'https://cdn.lordicon.com/jgukeevf.json' },
+  { label: 'Profile',    path: '/technician/profile',   icon: 'https://cdn.lordicon.com/bgebyztw.json' },
 ]
 
 export default function TechLayout() {

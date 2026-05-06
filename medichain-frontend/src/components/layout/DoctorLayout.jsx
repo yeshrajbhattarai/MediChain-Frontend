@@ -19,6 +19,9 @@ const DOCTOR_NAV = [
   { label: 'Labs',        path: '/doctor/labs',      icon: 'https://cdn.lordicon.com/nfuackpv.json' },
   // person silhouette — same as admin Profile, proven
   { label: 'Profile',     path: '/doctor/profile',   icon: 'https://cdn.lordicon.com/bgebyztw.json' },
+  { label: 'Lab Reports', path: '/doctor/lab-reports', icon: '...' },
+  { label: 'Medical Records', path: '/doctor/medical-records', icon: '...' },
+  { label: 'Approval Queue', path: '/doctor/approval-queue', icon: '...' },
 ]
 
 export default function DoctorLayout() {
