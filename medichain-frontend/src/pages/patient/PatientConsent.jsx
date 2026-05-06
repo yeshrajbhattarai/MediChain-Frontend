@@ -253,6 +253,8 @@ function ConsentDetailModal({ consentId, open, onClose, onRefresh }) {
   )
 }
 
+const RECORD_ID_DISPLAY_LENGTH = 12
+
 // ─── Consent Card ─────────────────────────────────────────────────────────────
 
 function ConsentCard({ consent, onClick }) {
@@ -278,7 +280,9 @@ function ConsentCard({ consent, onClick }) {
               {consent.requesting_hospital}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {consent.record_id ? `Record: ${String(consent.record_id).slice(0,12)}…` : 'All records'}
+              {consent.record_id
+                ? `Record: ${String(consent.record_id).slice(0, RECORD_ID_DISPLAY_LENGTH)}…`
+                : 'All records'}
             </p>
           </div>
         </div>

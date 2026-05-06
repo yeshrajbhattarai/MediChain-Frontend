@@ -30,7 +30,7 @@ export const getHospitalProfile = () =>
 // PUT /profile/update-name/ — update hospital name
 export const updateHospitalName = (hospital_name) =>
   api('/profile/update-name/', {
-    method: 'PUT',
+    method: 'PATCH',
     body: JSON.stringify({ hospital_name }),
   })
 
