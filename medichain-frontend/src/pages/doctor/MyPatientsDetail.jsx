@@ -1,8 +1,7 @@
 // src/pages/doctor/DoctorPatientDetail.jsx
 // Route: /doctor/patients/:id
-// Needs: <Route path="/doctor/patients/:id" element={<DoctorPatientDetail />} /> in App.jsx
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getAccessToken } from '../../auth_store/authStore'
 import { getProfile } from '../../auth_store/profileStore'
@@ -106,12 +105,113 @@ function printDiagnosis(patient, form, doctor) {
   w.document.close(); setTimeout(() => w.print(), 400)
 }
 
+// ── Searchable Select ─────────────────────────────────────────────────────────
+
+function SearchableSelect({ options, value, onChange, placeholder, labelKey = 'label', valueKey = 'value' }) {
+  const [open, setOpen]       = useState(false)
+  const [query, setQuery]     = useState('')
+  const ref                   = useRef(null)
+
+  const selected = options.find(o => o[valueKey] === value)
+  const filtered = options.filter(o =>
+    !query || String(o[labelKey]).toLowerCase().includes(query.toLowerCase())
+  )
+
+  useEffect(() => {
+    function close(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [])
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2.5 text-sm border border-gray-200 rounded-xl
+          bg-white focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-100 transition-all text-left">
+        <span className={selected ? 'text-gray-800' : 'text-gray-400'}>
+          {selected ? selected[labelKey] : placeholder}
+        </span>
+        <span className="text-gray-400 text-xs">▼</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl">
+          <div className="p-2 border-b border-gray-100">
+            <input autoFocus
+              className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-teal-400"
+              placeholder="Search…" value={query} onChange={e => setQuery(e.target.value)} />
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filtered.length === 0
+              ? <p className="px-4 py-3 text-sm text-gray-400 text-center">No results</p>
+              : filtered.map(o => (
+                <button key={o[valueKey]} type="button"
+                  onClick={() => { onChange(o[valueKey]); setOpen(false); setQuery('') }}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-teal-50
+                    ${o[valueKey] === value ? 'bg-teal-50 text-teal-700 font-medium' : 'text-gray-700'}`}>
+                  {o[labelKey]}
+                </button>
+              ))
+            }
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── TAB 1: Patient Overview ───────────────────────────────────────────────────
 
-function OverviewTab({ detail }) {
-  const p  = detail?.patient || {}
+function OverviewTab({ detail, patientId, onNurseChange }) {
+  const p      = detail?.patient || {}
   const nurses = detail?.assigned_nurses || []
   const techs  = detail?.assigned_technicians || []
+
+  const [allNurses, setAllNurses]   = useState([])
+  const [assigning, setAssigning]   = useState(false)
+  const [selectedNurse, setSelectedNurse] = useState('')
+  const [removing, setRemoving]     = useState(null)
+  const [assignErr, setAssignErr]   = useState('')
+
+  useEffect(() => {
+    api('/staff/nurses/')
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) setAllNurses(data)
+      })
+      .catch(() => {})
+  }, [])
+
+  async function handleAssign() {
+    if (!selectedNurse) return
+    setAssigning(true); setAssignErr('')
+    try {
+      const res = await api(`/staff/doctor/patients/${patientId}/assign-nurse/`, {
+        method: 'POST',
+        body: JSON.stringify({ nurse_id: selectedNurse }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        setAssignErr(d?.error || d?.detail || 'Failed to assign nurse')
+        return
+      }
+      setSelectedNurse('')
+      onNurseChange?.()
+    } catch { setAssignErr('Network error') }
+    finally { setAssigning(false) }
+  }
+
+  async function handleRemove(staffId) {
+    setRemoving(staffId)
+    try {
+      await api(`/staff/doctor/patients/${patientId}/remove-assignment/${staffId}/`, { method: 'DELETE' })
+      onNurseChange?.()
+    } catch {}
+    finally { setRemoving(null) }
+  }
+
+  const nurseOptions = allNurses
+    .filter(n => !nurses.some(assigned => assigned.id === n.id))
+    .map(n => ({ value: n.id, label: `${n.full_name} (${n.employee_id})` }))
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -151,22 +251,54 @@ function OverviewTab({ detail }) {
           </div>
         </div>
 
-        {/* Assigned staff */}
+        {/* Assigned nurses with add/remove */}
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Assigned Staff</h3>
-          {nurses.length === 0 && techs.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">No staff assigned yet.</p>
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Assigned Nurses</h3>
+
+          {/* Existing nurses */}
+          {nurses.length === 0 ? (
+            <p className="text-sm text-gray-400 italic mb-4">No nurses assigned yet.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-2 mb-4">
               {nurses.map(n => (
                 <div key={n.id} className="flex items-center gap-3 bg-purple-50 rounded-xl px-3 py-2.5">
-                  <div className="w-7 h-7 rounded-full bg-purple-200 text-purple-700 flex items-center justify-center text-xs font-bold">{n.full_name?.[0]}</div>
+                  <div className="w-7 h-7 rounded-full bg-purple-200 text-purple-700 flex items-center justify-center text-xs font-bold">
+                    {n.full_name?.[0]}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-800 truncate">{n.full_name}</p>
                     <p className="text-xs text-purple-500">Nurse · {n.employee_id}</p>
                   </div>
+                  <button onClick={() => handleRemove(n.id)} disabled={removing === n.id}
+                    className="w-6 h-6 rounded-full bg-red-100 text-red-500 hover:bg-red-200 flex items-center justify-center text-xs transition-colors disabled:opacity-50">
+                    {removing === n.id ? '…' : '✕'}
+                  </button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Assign new nurse */}
+          <div className="space-y-2">
+            <SearchableSelect
+              options={nurseOptions}
+              value={selectedNurse}
+              onChange={setSelectedNurse}
+              placeholder="Search & select a nurse…"
+            />
+            {assignErr && <p className="text-xs text-red-500">{assignErr}</p>}
+            <button onClick={handleAssign} disabled={!selectedNurse || assigning}
+              className="w-full py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs font-semibold rounded-xl transition-colors">
+              {assigning ? 'Assigning…' : '+ Assign Nurse'}
+            </button>
+          </div>
+        </div>
+
+        {/* Assigned technicians */}
+        {techs.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-5">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Assigned Technicians</h3>
+            <div className="space-y-2">
               {techs.map(t => (
                 <div key={t.id} className="flex items-center gap-3 bg-amber-50 rounded-xl px-3 py-2.5">
                   <div className="w-7 h-7 rounded-full bg-amber-200 text-amber-700 flex items-center justify-center text-xs font-bold">{t.full_name?.[0]}</div>
@@ -177,8 +309,8 @@ function OverviewTab({ detail }) {
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )
