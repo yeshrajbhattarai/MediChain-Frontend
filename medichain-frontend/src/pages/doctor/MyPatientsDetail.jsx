@@ -112,9 +112,58 @@ function OverviewTab({ detail }) {
   const p  = detail?.patient || {}
   const nurses = detail?.assigned_nurses || []
   const techs  = detail?.assigned_technicians || []
+  const nursesList = detail?.available_nurses || []
+  const [selectedNurse, setSelectedNurse] = useState('')
+  const [assigning, setAssigning] = useState(false)
+
+  async function assignNurse() {
+  if (!selectedNurse) return alert('Select nurse first')
+
+  setAssigning(true)
+  try {
+    await api(`/staff/doctor/patients/${detail.patient.id}/assign-nurse/`, {
+      method: 'POST',
+      body: JSON.stringify({ nurse_id: selectedNurse }),
+    })
+  } finally {
+    setAssigning(false)
+  }
+}
+
+
+ 
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Assign Nurse */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">
+            Assign Nurse
+          </h3>
+
+          <div className="flex gap-2">
+            <select
+              value={selectedNurse}
+              onChange={(e) => setSelectedNurse(e.target.value)}
+              className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm"
+            >
+              <option value="">Select nurse...</option>
+              {nursesList.map(n => (
+                <option key={n.id} value={n.id}>
+                  {n.full_name}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={assignNurse}
+              disabled={assigning}
+              className="px-4 py-2 bg-teal-600 text-white rounded-xl text-sm"
+            >
+              {assigning ? 'Assigning...' : 'Assign'}
+            </button>
+          </div>
+        </div>
       {/* Basic info */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Personal Information</h3>
@@ -189,12 +238,22 @@ function OverviewTab({ detail }) {
 const CHEST_TYPES = ['Typical Angina', 'Atypical Angina', 'Non-Anginal Pain', 'Asymptomatic']
 const BLANK_LAB   = { chest_pain_type: '', diagnosis: '', treatment_plan: '', notes: '', lab_id: '' }
 
-function SendToLabTab({ patient, toast$ }) {
+function SendToLabTab({ patient, detail, toast$ }) {
+  
   const [form, setForm]     = useState(BLANK_LAB)
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [sent, setSent]     = useState(null)
+  const [labsList, setLabsList] = useState([])
   const doctor = getProfile()
+
+useEffect(() => {
+  if (detail?.available_labs) {
+    setLabsList(detail.available_labs)
+  } else {
+    setLabsList([])
+  }
+}, [detail])
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: undefined })) }
 
@@ -281,13 +340,28 @@ function SendToLabTab({ patient, toast$ }) {
             value={form.notes} onChange={e => set('notes', e.target.value)} />
         </div>
 
-        {/* Lab ID */}
+        {/* Lab Selection */}
         <div>
-          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Lab UUID *</label>
-          <input className={i('lab_id')} placeholder="e.g. 4d5cd95d-d1bf-4dec-a0eb-..."
-            value={form.lab_id} onChange={e => set('lab_id', e.target.value)} />
-          <p className="text-xs text-gray-400 mt-1">Ask your admin for the lab UUID from the Labs section.</p>
-          {errors.lab_id && <p className="text-xs text-red-500 mt-0.5">{errors.lab_id}</p>}
+          <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">
+            Select Lab *
+          </label>
+
+          <select
+            className={i('lab_id')}
+            value={form.lab_id}
+            onChange={e => set('lab_id', e.target.value)}
+          >
+            <option value="">Select lab to continue...</option>
+            {Array.isArray(labsList) && labsList.map(l => (
+              <option key={l.id} value={l.id}>
+                {l.name ?? l.lab_name ?? '—'}
+              </option>
+            ))}
+          </select>
+
+          {errors.lab_id && (
+            <p className="text-xs text-red-500 mt-0.5">{errors.lab_id}</p>
+          )}
         </div>
 
         <button onClick={submit} disabled={loading}
@@ -355,8 +429,8 @@ function SendToLabTab({ patient, toast$ }) {
 
 // ── TAB 3: Reports ────────────────────────────────────────────────────────────
 
-function ReportsTab({ patient, toast$ }) {
-  const [recordId, setRecordId]     = useState('')
+function ReportsTab({ patient, detail, toast$ }) {
+  const navigate = useNavigate()
   const [record, setRecord]         = useState(null)
   const [loading, setLoading]       = useState(false)
   const [error, setError]           = useState('')
@@ -365,7 +439,7 @@ function ReportsTab({ patient, toast$ }) {
   const doctor = getProfile()
 
   // use records from detail API if available
-  const patientRecords = patient?.records || []
+  const patientRecords = detail?.records || []
 
   async function loadRecord() {
     if (!recordId.trim()) return
@@ -396,24 +470,98 @@ function ReportsTab({ patient, toast$ }) {
 
   return (
     <div className="space-y-5">
-      {/* Load record */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-5">
-        <h3 className="text-sm font-semibold text-gray-800 mb-1">Load Lab Report</h3>
-        <p className="text-xs text-gray-400 mb-4">Enter the Record ID the technician provides after completing the KFT test</p>
-        <div className="flex gap-2">
-          <input
-            className="flex-1 px-3 py-2.5 text-sm border border-gray-200 rounded-xl outline-none
-              focus:border-teal-500 focus:ring-1 focus:ring-teal-100 font-mono transition-all"
-            placeholder="Paste Record UUID here…"
-            value={recordId} onChange={e => setRecordId(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && loadRecord()} />
-          <button onClick={loadRecord} disabled={loading || !recordId.trim()}
-            className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-700 disabled:opacity-50 transition-colors whitespace-nowrap">
-            {loading ? '…' : 'Load'}
-          </button>
+            {/* Load record */}
+      <button onClick={() => navigate(`/doctor/patients/${patient.id}/create-record`)}
+          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors">
+          + Create Medical Record
+        </button>
+      {/* Existing Patient Records */}
+      {patientRecords.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">
+                Existing Medical Records
+              </h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Records already created for this patient
+              </p>
+            </div>
+
+            <span className="text-xs bg-teal-50 text-teal-700 ring-1 ring-teal-200 px-2.5 py-1 rounded-full font-medium">
+              {patientRecords.length} record{patientRecords.length > 1 ? 's' : ''}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {patientRecords.map(r => (
+              <div
+                key={r.record_id}
+                className="border border-gray-100 rounded-xl p-4 hover:border-teal-200 transition-all"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-gray-800">
+                        {r.lab_name || r.record_type_display || 'Medical Record'}
+                      </p>
+
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                        v{r.version}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-gray-500">
+                        <span className="font-medium">Record ID:</span>{' '}
+                        <span className="font-mono">{r.record_id}</span>
+                      </p>
+
+                      <p className="text-xs text-gray-500">
+                        <span className="font-medium">Recorded By:</span>{' '}
+                        {r.recorded_by_name || '—'}
+                      </p>
+
+                      <p className="text-xs text-gray-500">
+                        <span className="font-medium">Created:</span>{' '}
+                        {r.created_at
+                          ? new Date(r.created_at).toLocaleString('en-IN')
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={async () => {
+                      setLoading(true)
+                      setError('')
+
+                      try {
+                        const res = await api(`/staff/records/${r.record_id}/`)
+                        if (!res.ok) {
+                          setError('Record not found or access denied.')
+                          return
+                        }
+
+                        setRecord(await res.json())
+                      } catch {
+                        setError('Network error.')
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                    className="shrink-0 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-lg transition-colors"
+                  >
+                    Open
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
-      </div>
+      )}
+
+
 
       {/* Empty state */}
       {!record && !error && (
@@ -621,6 +769,7 @@ export default function DoctorPatientDetail() {
 
       {/* Patient hero */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        
         <div className="flex items-center gap-5">
           <div className="w-16 h-16 rounded-2xl bg-teal-600 text-white flex items-center justify-center text-2xl font-bold shrink-0">
             {initials}
@@ -667,8 +816,8 @@ export default function DoctorPatientDetail() {
 
       {/* Tab content */}
       {tab === 0 && <OverviewTab detail={detail} />}
-      {tab === 1 && <SendToLabTab patient={p} toast$={toast$} />}
-      {tab === 2 && <ReportsTab patient={p} toast$={toast$} />}
+      {tab === 1 && <SendToLabTab patient={p} detail={detail} toast$={toast$} />}
+      {tab === 2 && <ReportsTab patient={p} detail={detail} toast$={toast$} />}
     </div>
   )
 }

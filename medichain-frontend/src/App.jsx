@@ -23,6 +23,7 @@ import DoctorProfile        from './pages/doctor/Profile'
 import DoctorPatients       from './pages/doctor/MyPatients'
 import DoctorPatientsDetail from './pages/doctor/MyPatientsDetail'
 import DoctorLabs from './pages/doctor/Labs'
+import CreateMedicalRecord from './pages/doctor/CreateMedicalREcord'
 
 import TechnicianDashboard from './pages/technician/Dashboard'
 import TechnicianPatients from './pages/technician/TechnicianPatients'
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="dashboard"    element={<DoctorDashboard />} />
           <Route path="patients"     element={<DoctorPatients />} />
           <Route path="patients/:id" element={<DoctorPatientsDetail />} />
+          <Route path="patients/:id/create-record" element={<CreateMedicalRecord />} />
           <Route path="consent"      element={<Consent />} />  
           <Route path="labs" element={<DoctorLabs />} />
           <Route path="profile"      element={<DoctorProfile />} />
