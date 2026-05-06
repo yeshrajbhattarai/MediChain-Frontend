@@ -123,18 +123,20 @@ function Field({ label, value, mono = false }) {
 // ─── Consent Detail Modal ──────────────────────────────────────────────────────
 
 function ConsentDetailModal({ consentId, activeTab, open, onClose, onRefresh }) {
-  const [detail,   setDetail]   = useState(null)
-  const [loading,  setLoading]  = useState(false)
-  const [deciding, setDeciding] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [err,      setErr]      = useState('')
+  const [detail,      setDetail]      = useState(null)
+  const [loading,     setLoading]     = useState(false)
+  const [deciding,    setDeciding]    = useState(false)
+  const [deleting,    setDeleting]    = useState(false)
+  const [fetching,    setFetching]    = useState(false)
+  const [fetchedData, setFetchedData] = useState(null)
+  const [err,         setErr]         = useState('')
 
   const isSent     = activeTab === 'sent'
   const isReceived = activeTab === 'received'
 
   useEffect(() => {
     if (!open || !consentId) return
-    setDetail(null); setErr('')
+    setDetail(null); setErr(''); setFetchedData(null)
     setLoading(true)
     api(`/consent/${consentId}/`)
       .then(r => r.json())
@@ -172,8 +174,20 @@ function ConsentDetailModal({ consentId, activeTab, open, onClose, onRefresh }) 
     finally { setDeleting(false) }
   }
 
+  async function fetchRecord() {
+    setFetching(true); setErr(''); setFetchedData(null)
+    try {
+      const res  = await api(`/consent/${consentId}/fetch-record/`)
+      const data = await res.json()
+      if (!res.ok) { setErr(data.error || 'Failed to fetch record.'); return }
+      setFetchedData(data)
+    } catch { setErr('Network error.') }
+    finally { setFetching(false) }
+  }
+
   const canDecide   = isReceived && detail?.request_status === 'PENDING' && detail?.hospital_choice === 'PENDING'
   const canWithdraw = isSent     && detail?.request_status === 'PENDING'
+  const canFetch    = isSent     && detail?.request_status === 'APPROVED'
 
   return (
     <Modal open={open} onClose={onClose} title="Consent Request Detail" width="max-w-xl">
@@ -241,6 +255,47 @@ function ConsentDetailModal({ consentId, activeTab, open, onClose, onRefresh }) 
             </p>
           )}
 
+          {/* Sent + APPROVED → fetch record */}
+          {canFetch && !fetchedData && (
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-xs text-gray-500 mb-3">
+                Both parties have approved. You can now fetch the patient's record.
+              </p>
+              <button
+                onClick={fetchRecord}
+                disabled={fetching}
+                className="w-full py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+              >
+                {fetching ? 'Fetching…' : '📄 Fetch Record'}
+              </button>
+            </div>
+          )}
+
+          {/* Fetched record data */}
+          {fetchedData && (
+            <div className="pt-2 border-t border-gray-100 space-y-3">
+              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Fetched Record</p>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3 max-h-60 overflow-y-auto">
+                {Object.entries(fetchedData).map(([key, val]) => (
+                  <div key={key}>
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">
+                      {key.replace(/_/g, ' ')}
+                    </p>
+                    <p className="text-sm text-gray-800 font-mono break-all">
+                      {typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val ?? '—')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={onClose}
+                className="w-full py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          )}
+
           {/* Received + PENDING → approve / reject */}
           {canDecide && (
             <div className="pt-2 border-t border-gray-100">
@@ -285,8 +340,8 @@ function ConsentDetailModal({ consentId, activeTab, open, onClose, onRefresh }) 
             </div>
           )}
 
-          {/* Finalized → just close */}
-          {!canDecide && !canWithdraw && (
+          {/* Finalized → just close (no fetch or action available) */}
+          {!canDecide && !canWithdraw && !canFetch && !fetchedData && (
             <div className="pt-1 border-t border-gray-100">
               <button
                 onClick={onClose}

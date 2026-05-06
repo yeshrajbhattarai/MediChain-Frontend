@@ -8,6 +8,7 @@ import { getPayload, clearTokens } from '../../auth_store/authStore'
 const NAV = [
   { label: 'Dashboard', path: '/patient/dashboard', icon: '🏠' },
   { label: 'My Records', path: '/patient/records',  icon: '📋' },
+  { label: 'Consent',    path: '/patient/consent',  icon: '🔒' },
   { label: 'Profile',    path: '/patient/profile',  icon: '⚙️' },
 ]
 

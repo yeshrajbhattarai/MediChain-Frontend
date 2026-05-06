@@ -34,6 +34,7 @@ import PatientLayout from './components/layout/PatientLayout'
 import PatientDashboard from './pages/patient/PatientDashboard'
 import { PatientRecords, PatientRecordDetail } from './pages/patient/PatientRecords'
 import PatientProfile from './pages/patient/PatientProfile'
+import PatientConsent from './pages/patient/PatientConsent'
 
 import Consent from './pages/shared/Consent'   // ← replaces ConsentList
 
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="dashboard" element={<PatientDashboard />} />
           <Route path="records"   element={<PatientRecords />} />
           <Route path="records/:record_id" element={<PatientRecordDetail />} />
+          <Route path="consent"   element={<PatientConsent />} />
           <Route path="profile"   element={<PatientProfile />} />
         </Route>
       </Route>
