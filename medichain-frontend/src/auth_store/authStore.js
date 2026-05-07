@@ -41,6 +41,7 @@ export const getDashboardRoute = () => {
   const role = getStaffRole()
   if (role === 'doctor')      return '/doctor/dashboard'
   if (role === 'technician')  return '/technician/dashboard'
+  if (role === 'nurse') return '/nurse/dashboard'
   return '/login'
 }
 

@@ -32,9 +32,18 @@ import TechnicianDashboard from './pages/technician/Dashboard'
 import LabQueue            from './pages/technician/LabQueue'
 import TechnicianRecords   from './pages/technician/Records'
 import TechnicianProfile   from './pages/technician/Profile'
-import RecordDetail from './pages/technician/RecordDetail'
-import RecordHistory from './pages/technician/RecordHistory'
 import EditRecord from './pages/technician/EditRecord'
+
+
+import NurseLayout from './components/layout/NurseLayout'
+import NurseDashboard from './pages/nurses/Dashboard'
+import NurseQueue from './pages/nurses/Queue'
+import NurseQueueDetail from './pages/nurses/QueueDetail'
+import NursePatients from './pages/nurses/Patients'
+import NursePatientDetail from './pages/nurses/PatientDetail'
+import NurseRecords from './pages/nurses/Records'
+import NurseProfile from './pages/nurses/Profile'
+
 
 import PatientLayout from './components/layout/PatientLayout'
 import PatientDashboard from './pages/patient/PatientDashboard'
@@ -108,12 +117,33 @@ export default function App() {
           <Route path="lab-queue" element={<LabQueue />} />
           <Route path="records"   element={<TechnicianRecords />} />
           <Route path="profile"   element={<TechnicianProfile />} />
-          <Route path="records/:recordId" element={<RecordDetail />} />
-          <Route path="records/:recordId/history" element={<RecordHistory />} />
           <Route path="records/:recordId/edit" element={<EditRecord />} />
 
         </Route>
       </Route>
+
+        {/* Nurse */}
+      <Route element={<ProtectedRoute allowedRoles={['nurse']} />}>
+        <Route path="/nurse" element={<NurseLayout />}>
+
+          <Route path="dashboard" element={<NurseDashboard />} />
+
+          <Route path="queue" element={<NurseQueue />} />
+          <Route path="queue/:id" element={<NurseQueueDetail />} />
+
+          <Route path="patients" element={<NursePatients />} />
+          <Route
+            path="patients/:id"
+            element={<NursePatientDetail />}
+          />
+
+          <Route path="records" element={<NurseRecords />} />
+
+          <Route path="profile" element={<NurseProfile />} />
+
+        </Route>
+      </Route>
+
 
       {/* Patient */}
       <Route element={<ProtectedRoute allowedRoles={['patient']} />}>

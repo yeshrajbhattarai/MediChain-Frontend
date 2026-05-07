@@ -141,10 +141,12 @@ function LabModal({ requestId, summaryData, open, onClose, onSubmitted }) {
         if (data.error) { setErr(data.error); return }
         setDetail(data)
         // pre-fill form with any existing custom_field_values from the lab request
-        const fields  = data.lab_request?.lab?.report_fields || []
+        const fields = data.lab_request?.lab?.custom_field_schema || []
         const initial = {}
         const existing = data.lab_request?.custom_field_values || {}
-        fields.forEach(f => { initial[f.field_name] = existing[f.field_name] ?? '' })
+        fields.forEach(f => {
+          initial[f.key] = existing[f.key] ?? ''
+        })
         setFormData(initial)
       })
       .catch(() => setErr('Failed to load request details.'))
@@ -154,7 +156,7 @@ function LabModal({ requestId, summaryData, open, onClose, onSubmitted }) {
   if (!open) return null
 
   const req     = detail?.lab_request
-  const fields  = req?.lab?.report_fields || []
+  const fields = req?.lab?.custom_field_schema || []
   const labType = req?.lab?.lab_type
   const labLabel = LAB_TYPE_LABELS[labType] || labType || 'Lab'
 
@@ -162,9 +164,12 @@ function LabModal({ requestId, summaryData, open, onClose, onSubmitted }) {
     setSubmitting(true)
     setSubmitErr('')
     try {
-      const res  = await api(`/v1/staff/technician/lab-requests/${requestId}/submit/`, {
+      const res = await api(`/v1/staff/technician/records/create/`, {
         method: 'POST',
-        body:   JSON.stringify({ report_values: formData }),
+        body: JSON.stringify({
+        lab_request_id: requestId,
+        custom_field_values: formData,
+      }),
       })
       const data = await res.json()
       if (!res.ok) { setSubmitErr(data.error || 'Submission failed.'); return }
@@ -223,7 +228,7 @@ function LabModal({ requestId, summaryData, open, onClose, onSubmitted }) {
               <StatusPill status={req.status} />
             </div>
 
-            {/* Quick info grid */}
+            {/* Quick info grid — FIXED: req.requested_by for doctor, not req.patient */}
             <div className="grid grid-cols-2 gap-4">
               <InfoRow label="Doctor"   value={req.requested_by?.full_name} />
               <InfoRow label="Lab"      value={req.lab?.name} />
@@ -308,18 +313,18 @@ function LabModal({ requestId, summaryData, open, onClose, onSubmitted }) {
             <p className="text-xs font-semibold tracking-widest text-gray-400 uppercase">Technician Measurements</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {fields.map((field, i) => {
-                const isNum = field.field_type === 'integer' || field.field_type === 'float'
+                const isNum = field.type === 'integer' || field.type === 'float'
                 return (
                   <div key={i}>
                     <label className="block text-xs font-semibold text-gray-600 mb-1.5 capitalize">
-                      {field.field_name.replace(/_/g, ' ')}
+                      {field.label || field.key}
                       <span className="ml-1 font-normal text-gray-400 normal-case">({field.field_type})</span>
                     </label>
                     <input
                       type={isNum ? 'number' : 'text'}
-                      value={formData[field.field_name] ?? ''}
-                      onChange={e => setFormData(p => ({ ...p, [field.field_name]: e.target.value }))}
-                      placeholder={`Enter ${field.field_name.replace(/_/g, ' ')}`}
+                      value={formData[field.key] ?? ''}
+                      onChange={e => setFormData(p => ({ ...p, [field.key]: e.target.value }))}
+                      placeholder={`Enter ${field.label || field.key}`}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm
                                  focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none
                                  transition-all placeholder:text-gray-300"
@@ -384,7 +389,7 @@ function LabModal({ requestId, summaryData, open, onClose, onSubmitted }) {
           className="flex-1 py-2.5 text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50
                      disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors"
         >
-          {submitting ? 'Submitting…' : 'Submit Report ✓'}
+          {submitting ? 'Submitting…' : 'Submit Report'}
         </button>
       </div>
     </>
@@ -495,11 +500,10 @@ export default function LabQueue() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[180px] max-w-sm">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">🔍</span>
           <input
             className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-xl outline-none
                        focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors"
-            placeholder="Search patient or lab…"
+            placeholder="Search patient or lab..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />

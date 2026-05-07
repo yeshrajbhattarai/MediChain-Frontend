@@ -30,7 +30,7 @@ export const getDoctorPatientDetail = (patientId) =>
 // ── Records ─────────────────────────────────────────────────────────────────
 
 export const getDoctorRecords = () =>
-  api('/staff/records/').then(r => r.json())
+  api('/staff/doctor/records/').then(r => r.json())
 
 export const getDoctorRecordDetail = (recordId) =>
   api(`/staff/records/${recordId}/`).then(r => r.json())

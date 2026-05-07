@@ -18,10 +18,11 @@ const DOCTOR_NAV = [
   // flask / lab — same as admin Labs, proven
   { label: 'Labs',        path: '/doctor/labs',      icon: 'https://cdn.lordicon.com/nfuackpv.json' },
   // person silhouette — same as admin Profile, proven
-  { label: 'Profile',     path: '/doctor/profile',   icon: 'https://cdn.lordicon.com/bgebyztw.json' },
-  { label: 'Lab Reports', path: '/doctor/lab-reports', icon: '...' },
-  { label: 'Medical Records', path: '/doctor/medical-records', icon: '...' },
-  { label: 'Approval Queue', path: '/doctor/approval-queue', icon: '...' },
+  
+  { label: 'Lab Reports', path: '/doctor/lab-reports', icon: 'https://cdn.lordicon.com/jqqjtvlf.json' },
+  { label: 'Medical Records', path: '/doctor/medical-records', icon: 'https://cdn.lordicon.com/piurhpdv.json' },
+  { label: 'Approval Queue', path: '/doctor/approval-queue', icon: 'https://cdn.lordicon.com/excswhey.json' },
+  { label: 'Profile',     path: '/doctor/profile',   icon: 'https://cdn.lordicon.com/bushiqea.json' },
 ]
 
 export default function DoctorLayout() {

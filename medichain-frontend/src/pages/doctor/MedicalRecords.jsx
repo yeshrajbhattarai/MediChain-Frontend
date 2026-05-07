@@ -1,11 +1,9 @@
-// src/pages/doctor/MedicalRecords.jsx
-
 import { useEffect, useMemo, useState } from 'react'
 import {
   Search,
   FileText,
   Calendar,
-  User,
+  X,
   ShieldCheck,
   Activity,
 } from 'lucide-react'
@@ -14,6 +12,166 @@ import {
   getDoctorRecords,
   getDoctorRecordDetail,
 } from '../../api/doctor'
+
+// ─── Preview Modal ────────────────────────────────────────────────────────────
+
+function MedicalRecordPreviewModal({ record, open, onClose }) {
+  if (!open || !record) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{
+        background: 'rgba(15,23,42,0.45)',
+        backdropFilter: 'blur(4px)',
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* HEADER */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+
+              <h2 className="text-xl font-semibold text-gray-900">
+                {record.lab_name || 'Medical Record'}
+              </h2>
+
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                v{record.version || 1}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-400 mt-1">
+              Record ID: {record.record_id}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">
+              <ShieldCheck className="w-4 h-4" />
+              Verified
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-10 h-10 rounded-xl hover:bg-gray-100 flex items-center justify-center transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+
+          </div>
+        </div>
+
+        {/* BODY */}
+        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+
+          {/* TOP INFO */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
+              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
+                Patient
+              </p>
+
+              <p className="font-semibold text-gray-900">
+                {record.patient_name || '—'}
+              </p>
+            </div>
+
+            <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
+              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
+                Recorded By
+              </p>
+
+              <p className="font-semibold text-gray-900">
+                {record.recorded_by_name || '—'}
+              </p>
+            </div>
+
+          </div>
+
+          {/* DIAGNOSIS */}
+          <div className="border border-gray-100 rounded-2xl p-5">
+
+            <div className="flex items-center gap-2 mb-4">
+              <Activity className="w-5 h-5 text-teal-600" />
+
+              <h3 className="font-semibold text-gray-900">
+                Diagnosis
+              </h3>
+            </div>
+
+            <p className="text-gray-700 leading-relaxed">
+              {record.diagnosis || 'No diagnosis available.'}
+            </p>
+
+          </div>
+
+          {/* TREATMENT */}
+          <div className="border border-gray-100 rounded-2xl p-5">
+
+            <h3 className="font-semibold text-gray-900 mb-4">
+              Treatment Plan
+            </h3>
+
+            <p className="text-gray-700 leading-relaxed">
+              {record.treatment_plan || 'No treatment plan available.'}
+            </p>
+
+          </div>
+
+          {/* CLINICAL VALUES */}
+          <div className="border border-gray-100 rounded-2xl p-5">
+
+            <h3 className="font-semibold text-gray-900 mb-4">
+              Clinical Values
+            </h3>
+
+            <div className="space-y-3">
+
+              {record.custom_field_values &&
+              Object.keys(record.custom_field_values).length > 0 ? (
+
+                Object.entries(record.custom_field_values).map(([key, value]) => (
+
+                  <div
+                    key={key}
+                    className="flex items-center justify-between border-b border-gray-100 pb-3"
+                  >
+                    <span className="text-sm text-gray-500 capitalize">
+                      {key.replaceAll('_', ' ')}
+                    </span>
+
+                    <span className="font-semibold text-gray-900">
+                      {String(value)}
+                    </span>
+                  </div>
+                ))
+
+              ) : (
+
+                <p className="text-sm text-gray-400">
+                  No clinical values available.
+                </p>
+
+              )}
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DoctorMedicalRecords() {
   const [records, setRecords] = useState([])
@@ -30,16 +188,16 @@ export default function DoctorMedicalRecords() {
 
         if (!mounted) return
 
-        const rows = Array.isArray(data)
-          ? data
-          : Array.isArray(data.results)
-          ? data.results
+        const rows = Array.isArray(data?.records)
+          ? data.records
           : []
 
         setRecords(rows)
+
       } catch (err) {
         console.error(err)
         setRecords([])
+
       } finally {
         if (mounted) setLoading(false)
       }
@@ -68,6 +226,7 @@ export default function DoctorMedicalRecords() {
     try {
       const data = await getDoctorRecordDetail(recordId)
       setSelected(data)
+
     } catch (err) {
       console.error(err)
     }
@@ -76,258 +235,184 @@ export default function DoctorMedicalRecords() {
   return (
     <div className="space-y-6">
 
-      {/* Header */}
+      {/* HEADER */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-xl font-semibold text-gray-900">
           Medical Records
         </h1>
 
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-400 mt-0.5">
           View and verify all patient medical records
         </p>
       </div>
 
-      {/* Search */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-5">
-        <div className="flex items-center gap-3 border border-gray-200 rounded-xl px-4 py-3">
-          <Search className="w-4 h-4 text-gray-400" />
+      {/* STATS */}
+      <div className="flex gap-3 flex-wrap">
 
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search patient, record ID or lab..."
-            className="flex-1 bg-transparent outline-none text-sm"
-          />
+        <div className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 ring-1 ring-blue-200">
+          {records.length} total
         </div>
+
+        <div className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+          {filteredRecords.length} visible
+        </div>
+
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+      {/* SEARCH */}
+      <div className="relative">
 
-        {/* LEFT */}
-        <div className="xl:col-span-2 bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <Search className="w-4 h-4" />
+        </span>
 
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold text-gray-900">
-                Available Records
-              </h2>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search patient, record ID or lab..."
+          className="
+            w-full
+            pl-10
+            pr-3
+            py-2.5
+            text-sm
+            border
+            border-gray-200
+            rounded-xl
+            outline-none
+            focus:border-blue-400
+            focus:ring-1
+            focus:ring-blue-100
+            transition-colors
+          "
+        />
+      </div>
 
-              <p className="text-xs text-gray-400 mt-1">
-                {filteredRecords.length} record
-                {filteredRecords.length !== 1 ? 's' : ''}
-              </p>
-            </div>
+      {/* RECORDS */}
+      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-900">
+            Available Records
+          </h2>
+
+          <p className="text-xs text-gray-400 mt-1">
+            {filteredRecords.length} record
+            {filteredRecords.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+
+        {loading ? (
+
+          <div className="p-10 text-center text-sm text-gray-500">
+            Loading records...
           </div>
 
-          {loading ? (
-            <div className="p-6 text-sm text-gray-500">
-              Loading records...
-            </div>
-          ) : filteredRecords.length === 0 ? (
-            <div className="p-6 text-sm text-gray-500">
+        ) : filteredRecords.length === 0 ? (
+
+          <div className="p-10 text-center text-gray-400">
+
+            <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+
+            <p className="font-medium text-gray-600">
               No records found.
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
+            </p>
 
-              {filteredRecords.map((record) => (
-                <button
-                  key={record.record_id}
-                  onClick={() => openRecord(record.record_id)}
-                  className={`w-full text-left p-5 transition-colors ${
-                    selected?.record_id === record.record_id
-                      ? 'bg-blue-50'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
+          </div>
 
-                    <div className="min-w-0 flex-1">
+        ) : (
 
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold text-gray-900 truncate">
-                          {record.lab_name || 'Medical Record'}
-                        </h3>
+          <div className="divide-y divide-gray-100">
 
-                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                          v{record.version || 1}
-                        </span>
-                      </div>
+            {filteredRecords.map((record) => (
 
-                      <div className="space-y-2 mt-3 text-sm text-gray-500">
+              <button
+                key={record.record_id}
+                onClick={() => openRecord(record.record_id)}
+                className="
+                  w-full
+                  text-left
+                  p-5
+                  hover:bg-blue-50/40
+                  transition-all
+                  group
+                "
+              >
+                <div className="flex items-start justify-between gap-4">
 
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4" />
-                          <span>
-                            {record.patient_name || 'Unknown Patient'}
-                          </span>
-                        </div>
+                  {/* LEFT */}
+                  <div className="min-w-0 flex-1">
 
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4" />
-                          <span>
-                            {record.created_at
-                              ? new Date(record.created_at).toLocaleString('en-IN')
-                              : '—'}
-                          </span>
-                        </div>
+                    {/* PATIENT + VERSION */}
+                    <div className="flex items-center gap-2 flex-wrap">
 
-                      </div>
-
-                    </div>
-
-                    <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-                      <FileText className="w-5 h-5 text-teal-600" />
-                    </div>
-
-                  </div>
-                </button>
-              ))}
-
-            </div>
-          )}
-
-        </div>
-
-        {/* RIGHT */}
-        <div className="xl:col-span-3 bg-white border border-gray-200 rounded-2xl overflow-hidden">
-
-          {!selected ? (
-            <div className="p-12 text-center">
-
-              <FileText className="w-14 h-14 text-gray-300 mx-auto mb-4" />
-
-              <h3 className="text-lg font-semibold text-gray-700">
-                No medical record selected
-              </h3>
-
-              <p className="text-sm text-gray-400 mt-2">
-                Select a record from the left panel
-              </p>
-
-            </div>
-          ) : (
-            <>
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between gap-4">
-
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    {selected.lab_name || 'Medical Record'}
-                  </h2>
-
-                  <p className="text-sm text-gray-500 mt-1">
-                    Record ID: {selected.record_id}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">
-                  <ShieldCheck className="w-4 h-4" />
-                  Verified
-                </div>
-
-              </div>
-
-              <div className="p-6 space-y-6">
-
-                {/* Patient Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                  <div className="border border-gray-100 rounded-xl p-4">
-                    <p className="text-sm text-gray-400 mb-1">
-                      Patient Name
-                    </p>
-
-                    <p className="font-semibold text-gray-900">
-                      {selected.patient_name || '—'}
-                    </p>
-                  </div>
-
-                  <div className="border border-gray-100 rounded-xl p-4">
-                    <p className="text-sm text-gray-400 mb-1">
-                      Recorded By
-                    </p>
-
-                    <p className="font-semibold text-gray-900">
-                      {selected.recorded_by_name || '—'}
-                    </p>
-                  </div>
-
-                </div>
-
-                {/* Diagnosis */}
-                <div className="border border-gray-100 rounded-xl p-5">
-
-                  <div className="flex items-center gap-2 mb-4">
-                    <Activity className="w-5 h-5 text-teal-600" />
-
-                    <h3 className="font-semibold text-gray-900">
-                      Diagnosis
-                    </h3>
-                  </div>
-
-                  <p className="text-gray-700">
-                    {selected.diagnosis || 'No diagnosis available.'}
-                  </p>
-
-                </div>
-
-                {/* Treatment */}
-                <div className="border border-gray-100 rounded-xl p-5">
-
-                  <h3 className="font-semibold text-gray-900 mb-4">
-                    Treatment Plan
-                  </h3>
-
-                  <p className="text-gray-700">
-                    {selected.treatment_plan || 'No treatment plan available.'}
-                  </p>
-
-                </div>
-
-                {/* Clinical Values */}
-                <div className="border border-gray-100 rounded-xl p-5">
-
-                  <h3 className="font-semibold text-gray-900 mb-4">
-                    Clinical Values
-                  </h3>
-
-                  <div className="space-y-3">
-
-                    {selected.custom_field_values &&
-                    Object.keys(selected.custom_field_values).length > 0 ? (
-                      Object.entries(selected.custom_field_values).map(
-                        ([key, value]) => (
-                          <div
-                            key={key}
-                            className="flex items-center justify-between border-b border-gray-100 pb-3"
-                          >
-                            <span className="text-sm text-gray-500 capitalize">
-                              {key.replaceAll('_', ' ')}
-                            </span>
-
-                            <span className="font-semibold text-gray-900">
-                              {String(value)}
-                            </span>
-                          </div>
-                        )
-                      )
-                    ) : (
-                      <p className="text-sm text-gray-400">
-                        No clinical values available.
+                      <p className="font-semibold text-gray-900 truncate text-base">
+                        {record.patient_name || 'Unknown Patient'}
                       </p>
-                    )}
+
+                      <span className="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-blue-100 text-blue-700">
+                        v{record.version || 1}
+                      </span>
+
+                    </div>
+
+                    {/* LAB */}
+                    <p className="mt-2 text-sm text-gray-600 font-medium">
+                      {record.lab_name || 'Medical Record'}
+                    </p>
+
+                    {/* DATE */}
+                    <div className="mt-3 flex items-center gap-2 text-sm text-gray-400">
+
+                      <Calendar className="w-4 h-4" />
+
+                      <span>
+                        {record.created_at
+                          ? new Date(record.created_at).toLocaleString('en-IN')
+                          : '—'}
+                      </span>
+
+                    </div>
 
                   </div>
 
+                  {/* ICON */}
+                  <div className="
+                    w-12
+                    h-12
+                    rounded-2xl
+                    bg-teal-50
+                    flex
+                    items-center
+                    justify-center
+                    shrink-0
+                    group-hover:bg-teal-100
+                    transition-colors
+                  ">
+                    <FileText className="w-5 h-5 text-teal-600" />
+                  </div>
+
                 </div>
+              </button>
+            ))}
 
-              </div>
-            </>
-          )}
-
-        </div>
+          </div>
+        )}
 
       </div>
+
+      {!loading && filteredRecords.length > 0 && (
+        <p className="text-xs text-gray-400 text-right">
+          Showing {filteredRecords.length} of {records.length} records
+        </p>
+      )}
+
+      {/* MODAL */}
+      <MedicalRecordPreviewModal
+        record={selected}
+        open={!!selected}
+        onClose={() => setSelected(null)}
+      />
 
     </div>
   )

@@ -1,4 +1,5 @@
-// src/pages/technician/EditRecord.jsx
+
+// src/pages/technician/RecordHistory.jsx
 
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -15,148 +16,100 @@ const api = (url, opts = {}) =>
     },
   })
 
-export default function EditRecord() {
+export default function RecordHistory() {
   const { recordId } = useParams()
   const navigate = useNavigate()
 
-  const [record, setRecord] = useState(null)
-  const [reason, setReason] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const [history, setHistory] = useState([])
 
   useEffect(() => {
-    loadRecord()
+    loadHistory()
   }, [])
 
-  async function loadRecord() {
-    const res = await api(`/v1/staff/records/${recordId}/`)
+  async function loadHistory() {
+    const res = await api(`/v1/staff/records/${recordId}/history/`)
     const data = await res.json()
 
     if (res.ok) {
-      setRecord(data)
+      setHistory(data)
     }
-  }
-
-  async function saveVersion() {
-    setSubmitting(true)
-
-    try {
-      await api(`/v1/staff/records/${recordId}/`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          custom_field_values: record.custom_field_values,
-          age: record.age,
-          gender: record.gender,
-          reason,
-        }),
-      })
-
-      navigate(`/technician/records/${recordId}`)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  if (!record) {
-    return <div className="p-8">Loading...</div>
   }
 
   return (
-    <div className="space-y-6 pb-10">
+    <div className="space-y-6">
 
       <div>
         <h1 className="text-3xl font-semibold">
-          Edit Record
+          Record History
         </h1>
-
-        <p className="text-sm text-gray-400 mt-1">
-          A new version will be created and older versions remain immutable.
-        </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
 
-        <div className="grid md:grid-cols-2 gap-5">
-
+        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <label className="text-sm font-medium text-gray-700">
-              Age
-            </label>
-
-            <input
-              value={record.age || ''}
-              onChange={e => setRecord({ ...record, age: e.target.value })}
-              className="w-full mt-2 border border-gray-300 rounded-xl px-4 py-3"
-            />
+            <h2 className="text-2xl font-semibold">Version Timeline</h2>
+            <p className="text-sm text-gray-400 mt-1">
+              Immutable snapshots of all record updates.
+            </p>
           </div>
 
-          <div>
-            <label className="text-sm font-medium text-gray-700">
-              Gender
-            </label>
-
-            <input
-              value={record.gender || ''}
-              onChange={e => setRecord({ ...record, gender: e.target.value })}
-              className="w-full mt-2 border border-gray-300 rounded-xl px-4 py-3"
-            />
-          </div>
+          <span className="px-3 py-1 rounded-full text-xs border border-gray-200">
+            {history.length} versions
+          </span>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-5">
-          {Object.entries(record.custom_field_values || {}).map(([key, value]) => (
-            <div key={key}>
-              <label className="text-sm font-medium text-gray-700 capitalize">
-                {key.replaceAll('_', ' ')}
-              </label>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                {['Version', 'Event', 'Changed At', 'Changed By', 'Reason'].map(h => (
+                  <th
+                    key={h}
+                    className="px-6 py-4 text-left text-xs uppercase tracking-widest text-gray-400"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
 
-              <input
-                value={value}
-                onChange={e =>
-                  setRecord({
-                    ...record,
-                    custom_field_values: {
-                      ...record.custom_field_values,
-                      [key]: e.target.value,
-                    },
-                  })
-                }
-                className="w-full mt-2 border border-gray-300 rounded-xl px-4 py-3"
-              />
-            </div>
-          ))}
-        </div>
+            <tbody>
+              {history.map((item, idx) => (
+                <tr key={idx} className="border-b border-gray-100">
 
-        <div>
-          <label className="text-sm font-medium text-gray-700">
-            Change Reason
-          </label>
+                  <td className="px-6 py-5 font-semibold">
+                    v{item.version_number}
+                  </td>
 
-          <textarea
-            value={reason}
-            onChange={e => setReason(e.target.value)}
-            placeholder="What changed and why"
-            className="w-full mt-2 border border-gray-300 rounded-xl px-4 py-3 min-h-[120px]"
-          />
-        </div>
+                  <td className="px-6 py-5 capitalize">
+                    {item.event_type}
+                  </td>
 
-        <div className="flex gap-3">
+                  <td className="px-6 py-5">
+                    {item.changed_at}
+                  </td>
 
-          <button
-            onClick={saveVersion}
-            disabled={submitting}
-            className="px-5 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
-          >
-            {submitting ? 'Saving...' : 'Save New Version'}
-          </button>
+                  <td className="px-6 py-5">
+                    {item.changed_by_name}
+                  </td>
 
-          <button
-            onClick={() => navigate(`/technician/records/${recordId}`)}
-            className="px-5 py-3 rounded-xl border border-gray-300 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
+                  <td className="px-6 py-5">
+                    {item.change_reason}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      <button
+        onClick={() => navigate(`/technician/records/${recordId}`)}
+        className="px-5 py-3 rounded-xl border border-gray-300 hover:bg-gray-50"
+      >
+        Back To Record
+      </button>
     </div>
   )
 }
