@@ -187,11 +187,11 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
               {/* Patient Info */}
               <div className="flex items-center gap-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
                 <div className="w-12 h-12 rounded-lg bg-blue-100 text-blue-700 font-bold flex items-center justify-center">
-                  {item.patient_name?.[0] || 'P'}
+                  {item.patient?.full_name?.[0] || 'P'}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">{item.patient_name}</p>
-                  <p className="text-sm text-blue-600">{item.lab_name}</p>
+                  <p className="font-semibold text-gray-900">{item.patient?.full_name}</p>
+                  <p className="text-sm text-blue-600">{item.title}</p>
                 </div>
               </div>
 
@@ -201,15 +201,15 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
                   <p className="text-xs font-semibold text-gray-400 uppercase mb-2">
                     Submitted By
                   </p>
-                  <p className="font-semibold text-gray-900">{item.nurse_name || '—'}</p>
+                  <p className="font-semibold text-gray-900">{item.picked_by?.full_name || '—'}</p>
                 </div>
                 <div className="border border-gray-100 rounded-xl p-4">
                   <p className="text-xs font-semibold text-gray-400 uppercase mb-2">
                     Submitted At
                   </p>
                   <p className="font-semibold text-gray-900">
-                    {item.submitted_at
-                      ? new Date(item.submitted_at).toLocaleString('en-IN', {
+                    {item.created_at
+                      ? new Date(item.created_at).toLocaleString('en-IN', {
                           day: '2-digit',
                           month: 'short',
                           hour: '2-digit',
@@ -225,7 +225,7 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
                 <p className="text-xs font-semibold text-gray-400 uppercase mb-3">
                   Diagnosis
                 </p>
-                <p className="text-gray-800">{item.diagnosis || 'No diagnosis provided'}</p>
+                <p className="text-gray-800">{item.primary_diagnosis || 'No diagnosis provided'}</p>
               </div>
 
               {/* Clinical Values */}
@@ -244,11 +244,11 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
                   </div>
                   <div>
                     <p className="text-gray-500">Temperature</p>
-                    <p className="font-semibold text-gray-900">{item.temperature || '—'}</p>
+                    <p className="font-semibold text-gray-900">{item.temperature_c || '—'}</p>
                   </div>
                   <div>
                     <p className="text-gray-500">SpO2</p>
-                    <p className="font-semibold text-gray-900">{item.spo2 || '—'}%</p>
+                    <p className="font-semibold text-gray-900">{item.spo2_percent || '—'}%</p>
                   </div>
                 </div>
               </div>
@@ -258,7 +258,7 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
                 <p className="text-xs font-semibold text-gray-400 uppercase mb-3">
                   Nurse Notes
                 </p>
-                <p className="text-gray-700">{item.notes || 'No additional notes'}</p>
+                <p className="text-gray-700">{item.nurse_observation || 'No additional notes'}</p>
               </div>
             </>
           )}
@@ -435,11 +435,11 @@ export default function ApprovalQueue() {
       const res = await api('/staff/doctor/approval-queue/')
       const data = await res.json()
 
-      if (res.ok && data.results) {
-        setQueue(data.results)
-      } else {
-        setError('Failed to load approval queue')
-      }
+    if (res.ok) {
+      setQueue(Array.isArray(data) ? data : [])
+    } else {
+      setError('Failed to load approval queue')
+    }
     } catch {
       setError('Network error')
     } finally {
@@ -515,17 +515,17 @@ export default function ApprovalQueue() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-2">
-                      <h3 className="font-semibold text-gray-900">{item.patient_name}</h3>
+                      <h3 className="font-semibold text-gray-900">{item.patient?.full_name}</h3>
                       <span className="px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded-full">
                         Pending
                       </span>
                     </div>
                     <div className="text-sm text-gray-500 space-y-1">
-                      <p>{item.lab_name}</p>
-                      <p>Submitted by {item.nurse_name}</p>
+                      <p>{item.title}</p>
+                      <p>Submitted by {item.picked_by?.full_name}</p>
                       <p>
-                        {item.submitted_at
-                          ? new Date(item.submitted_at).toLocaleString('en-IN', {
+                        {item.created_at
+                          ? new Date(item.created_at).toLocaleString('en-IN', {
                               day: '2-digit',
                               month: 'short',
                               hour: '2-digit',

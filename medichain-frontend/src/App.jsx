@@ -39,8 +39,8 @@ import NurseLayout from './components/layout/NurseLayout'
 import NurseDashboard from './pages/nurses/Dashboard'
 import NurseQueue from './pages/nurses/Queue'
 import NurseQueueDetail from './pages/nurses/QueueDetail'
-import NursePatients from './pages/nurses/Patients'
-import NursePatientDetail from './pages/nurses/PatientDetail'
+// import NursePatients from './pages/nurses/Patients'
+// import NursePatientDetail from './pages/nurses/PatientDetail'
 import NurseRecords from './pages/nurses/Records'
 import NurseProfile from './pages/nurses/Profile'
 
@@ -131,11 +131,7 @@ export default function App() {
           <Route path="queue" element={<NurseQueue />} />
           <Route path="queue/:id" element={<NurseQueueDetail />} />
 
-          <Route path="patients" element={<NursePatients />} />
-          <Route
-            path="patients/:id"
-            element={<NursePatientDetail />}
-          />
+          
 
           <Route path="records" element={<NurseRecords />} />
 

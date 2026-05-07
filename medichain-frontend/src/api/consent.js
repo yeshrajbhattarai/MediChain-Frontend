@@ -3,7 +3,7 @@
 
 import { getAccessToken } from '../auth_store/authStore'
 
-const BASE = 'http://localhost:8000/api/v1'
+const BASE = 'http://localhost:8000/api'
 
 const api = (url, opts = {}) =>
   fetch(`${BASE}${url}`, {
@@ -71,8 +71,7 @@ export const searchPatientByPhone = (phone) =>
     return r.json()
   })
 
-// ── Patient-facing consent endpoint ──────────────────────────────────────────
 
-// GET /patient/consents/ — list consent requests for the logged-in patient
+// GET /api/consent/patient/consents/
 export const getPatientConsents = () =>
-  api('/patient/consents/').then(r => r.json())
+  api('/consent/patient/consents/').then(r => r.json())

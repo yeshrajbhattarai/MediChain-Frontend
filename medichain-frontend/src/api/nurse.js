@@ -1,6 +1,8 @@
 // src/api/nurse.js
+// Nurse portal API endpoints
+// All endpoints require JWT authentication
 
-import { getAccessToken } from '../auth_store/authStore'
+import { getAccessToken, clearTokens } from '../auth_store/authStore'
 
 const BASE = 'http://localhost:8000/api/v1'
 
@@ -9,126 +11,218 @@ const api = (url, opts = {}) =>
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAccessToken() || ''}`,
+      Authorization: `Bearer ${getAccessToken()}`,
       ...opts.headers,
     },
+  }).then(async (r) => {
+    // Handle 401 (token expired)
+    if (r.status === 401) {
+      clearTokens()
+      window.location.href = '/login'
+    }
+    return r
   })
 
-// ── DASHBOARD ─────────────────────────────────────────────
-// temporary fallback using records endpoint
-
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+// Get nurse dashboard stats (aggregated from queue items)
 export const getNurseDashboard = async () => {
-  const res = await api('/staff/nurse/records/')
-
-  const data = await res.json()
+  // Since there's no dedicated dashboard API, we'll aggregate from queue items
+  const queue = await getNurseQueue()
+  
+  const assigned_tasks = queue.length
+  const pending_tasks = queue.filter(
+    (item) => item.status === 'pending'
+  ).length
+  const completed_today = queue.filter(
+    (item) => item.status === 'completed'
+  ).length
+  
+  // Extract unique patients
+  const patientIds = new Set()
+  queue.forEach((item) => {
+    if (item.patient?.id) patientIds.add(item.patient.id)
+  })
+  const total_patients = patientIds.size
 
   return {
-    assigned_tasks: Array.isArray(data) ? data.length : 0,
-    completed_today: Array.isArray(data) ? data.length : 0,
-    pending_tasks: 0,
-    total_patients: 0,
+    assigned_tasks,
+    pending_tasks,
+    completed_today,
+    total_patients,
+    recent_tasks: queue.slice(0, 5),
   }
 }
 
-// ── QUEUE ─────────────────────────────────────────────────
+// ─── Queue Management ─────────────────────────────────────────────────────────
 
-export const getNurseQueue = async () => {
-  const res = await api('/staff/nurse/queue/')
-
-  if (!res.ok) {
-    return []
+// Get all nurse queue items (with optional status filter)
+export const getNurseQueue = async (status = null) => {
+  let url = '/staff/nurse/queue/'
+  
+  if (status) {
+    const statusParam = Array.isArray(status)
+      ? status.join(',')
+      : status
+    url += `?status=${statusParam}`
   }
 
-  return res.json()
-}
-
-export const getNurseQueueItem = async (queueId) => {
-  const res = await api(
-    `/staff/nurse/queue/${queueId}/`
-  )
-
-  if (!res.ok) {
-    return null
+  const r = await api(url)
+  
+  if (!r.ok) {
+    const err = await r.json()
+    throw new Error(err.error || 'Failed to load queue')
   }
 
-  return res.json()
+  return await r.json()
 }
 
-// TEMPORARY
-export const completeNurseQueueItem = async () => {
-  return {
-    success: true,
-  }
-}
-
-// ── PATIENTS ──────────────────────────────────────────────
-// removed because backend missing
-
-export const getNursePatients = async () => []
-
-export const getNursePatientDetail = async () => null
-
-// ── RECORDS ───────────────────────────────────────────────
-
-export const getNurseRecords = async () => {
-  const res = await api('/staff/nurse/records/')
-
-  if (!res.ok) {
-    return []
+// Get single queue item detail
+export const getNurseQueueItem = async (itemId) => {
+  const r = await api(`/staff/nurse/queue/${itemId}/`)
+  
+  if (!r.ok) {
+    const err = await r.json()
+    throw new Error(err.error || 'Failed to load queue item')
   }
 
-  return res.json()
+  return await r.json()
 }
 
-export const getNurseRecordDetail = async (
-  recordId
-) => {
-  const res = await api(
-    `/staff/records/${recordId}/`
-  )
+// Complete a nurse queue item (record vitals and observations)
+export const completeNurseQueueItem = async (itemId, data) => {
+  const r = await api(`/staff/nurse/queue/${itemId}/`, {
+    method: 'POST',
+    body: JSON.stringify({
+      blood_pressure: data.blood_pressure,
+      pulse_rate: parseInt(data.pulse_rate),
+      temperature_c: parseFloat(data.temperature_c),
+      spo2_percent: parseInt(data.spo2_percent),
+      random_blood_sugar: data.random_blood_sugar || '',
+      nurse_tests_performed: data.nurse_tests_performed,
+      nurse_observation: data.nurse_observation,
+      treatment_given: data.treatment_given,
+      medications_administered: data.medications_administered,
+      follow_up_notes: data.follow_up_notes || '',
+    }),
+  })
 
-  if (!res.ok) {
-    return null
+  if (!r.ok) {
+    const err = await r.json()
+    throw new Error(err.error || 'Failed to complete queue item')
   }
 
-  return res.json()
+  return await r.json()
 }
 
-// ── PROFILE ───────────────────────────────────────────────
-// using existing backend routes
+// ─── Profile Management ───────────────────────────────────────────────────────
 
+// Get nurse's own profile
 export const getNurseProfile = async () => {
-  return {
-    full_name: 'Nurse',
-    email: '',
-    phone: '',
+  const r = await api('/staff/nurse/profile/')
+  
+  if (!r.ok) {
+    const err = await r.json()
+    throw new Error(err.error || 'Failed to load profile')
   }
+
+  return await r.json()
 }
 
-export const updateNurseProfile = async (
-  body
-) => {
-  const res = await api(
-    '/staff/nurse/profile/update-personal/',
-    {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }
-  )
+// Update nurse personal details
+export const updateNurseProfile = async (data) => {
+  const r = await api('/staff/nurse/profile/update-personal/', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      date_of_birth: data.date_of_birth || null,
+      gender: data.gender || '',
+      years_experience: data.years_experience || null,
+      license_number: data.license_number || '',
+      home_address: data.home_address || '',
+      bio: data.bio || '',
+    }),
+  })
 
-  return res.json()
+  if (!r.ok) {
+    const err = await r.json()
+    throw new Error(err.error || 'Failed to update profile')
+  }
+
+  return await r.json()
 }
 
-export const updateNursePassword = async (
-  body
-) => {
-  const res = await api(
-    '/staff/nurse/profile/update-password/',
-    {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }
-  )
+// Change nurse password
+export const updateNursePassword = async (data) => {
+  const r = await api('/staff/nurse/profile/update-password/', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      current_password: data.old_password || data.current_password,
+      new_password: data.new_password,
+      confirm_new_password: data.new_password,
+    }),
+  })
 
-  return res.json()
+  if (!r.ok) {
+    const err = await r.json()
+    throw new Error(err.error || 'Failed to update password')
+  }
+
+  return await r.json()
+}
+
+// ─── Medical Records ──────────────────────────────────────────────────────────
+
+// Get all finalized medical records for the nurse
+export const getNurseMedicalRecords = async (filters = {}) => {
+  let url = '/staff/nurse/records/'
+  
+  const params = new URLSearchParams()
+  if (filters.gov_id_type) params.append('gov_id_type', filters.gov_id_type)
+  if (filters.gov_id_number) params.append('gov_id_number', filters.gov_id_number)
+  
+  if (params.toString()) {
+    url += `?${params.toString()}`
+  }
+
+  const r = await api(url)
+  
+  if (!r.ok) {
+    const err = await r.json()
+    throw new Error(err.error || 'Failed to load records')
+  }
+
+  return await r.json()
+}
+
+// Get detailed medical record with version history
+export const getNurseMedicalRecordDetail = async (recordId, versionNumber = null) => {
+  let url = `/staff/nurse/records/${recordId}/`
+  
+  if (versionNumber) {
+    url += `?v=${versionNumber}`
+  }
+
+  const r = await api(url)
+  
+  if (!r.ok) {
+    const err = await r.json()
+    throw new Error(err.error || 'Failed to load record detail')
+  }
+
+  return await r.json()
+}
+
+// ─── Logout ───────────────────────────────────────────────────────────────────
+
+export const logoutNurse = async (refreshToken) => {
+  const r = await api('/logout/', {
+    method: 'POST',
+    body: JSON.stringify({ refresh: refreshToken }),
+  })
+
+  if (!r.ok) {
+    const err = await r.json()
+    throw new Error(err.error || 'Logout failed')
+  }
+
+  return await r.json()
 }

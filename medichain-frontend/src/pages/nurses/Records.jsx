@@ -1,40 +1,35 @@
-// src/pages/nurse/Records.jsx
+// src/pages/nurses/Records.jsx
 
 import { useEffect, useMemo, useState } from 'react'
-
 import {
   Search,
-  ClipboardCheck,
   CalendarDays,
-  Eye,
+  ClipboardCheck,
+  Activity,
+  UserRound,
+  X,
+  ArrowUpRight,
 } from 'lucide-react'
 
-import {
-  getNurseRecords,
-} from '../../api/nurse'
+import { getNurseMedicalRecords } from '../../api/nurse'
 
 export default function Records() {
   const [records, setRecords] = useState([])
-
-  const [search, setSearch] = useState('')
-
   const [loading, setLoading] = useState(true)
-
-  const [selectedRecord, setSelectedRecord] =
-    useState(null)
+  const [search, setSearch] = useState('')
+  const [selectedRecord, setSelectedRecord] = useState(null)
 
   useEffect(() => {
     async function loadRecords() {
       try {
-        setLoading(true)
+        const data = await getNurseMedicalRecords()
 
-        const data = await getNurseRecords()
+        console.log('Nurse Records:', data)
 
         setRecords(Array.isArray(data) ? data : [])
-
       } catch (err) {
         console.error(err)
-
+        setRecords([])
       } finally {
         setLoading(false)
       }
@@ -45,211 +40,194 @@ export default function Records() {
 
   const filteredRecords = useMemo(() => {
     return records.filter((record) => {
-      const query = search.toLowerCase()
-
-      const patient =
-        record?.patient?.full_name
-          ?.toLowerCase() || ''
-
-      const diagnosis =
-        record?.diagnosis?.toLowerCase() || ''
+      const q = search.toLowerCase()
 
       return (
-        patient.includes(query) ||
-        diagnosis.includes(query)
+        record?.patient?.full_name?.toLowerCase()?.includes(q) ||
+        record?.primary_diagnosis?.toLowerCase()?.includes(q) ||
+        record?.title?.toLowerCase()?.includes(q)
       )
     })
   }, [records, search])
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
 
       {/* HEADER */}
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">
-          Records
+        <h1 className="text-2xl font-semibold text-gray-900">
+          Finalized Records
         </h1>
 
-        <p className="text-sm text-gray-400 mt-0.5">
-          Completed nursing records and reports
+        <p className="text-sm text-gray-400 mt-1">
+          Completed nursing records and finalized patient summaries
         </p>
       </div>
 
       {/* SEARCH */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
 
         <input
-          placeholder="Search records..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by patient, diagnosis or record..."
           className="
             w-full
-            pl-10
-            pr-3
-            py-2.5
-            text-sm
+            h-12
+            pl-11
+            pr-4
+            rounded-2xl
             border
             border-gray-200
-            rounded-xl
+            bg-white
+            text-sm
             outline-none
+            focus:ring-4
+            focus:ring-blue-50
             focus:border-blue-400
-            focus:ring-1
-            focus:ring-blue-100
           "
         />
       </div>
 
-      {/* LIST */}
-      <div className="
-        grid
-        grid-cols-1
-        gap-4
-      ">
+      {/* RECORDS GRID */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
 
-        {loading && (
-          <div className="
-            bg-white
-            border
-            border-gray-200
-            rounded-2xl
-            p-10
-            text-center
-            text-sm
-            text-gray-500
-          ">
-            Loading records...
-          </div>
-        )}
+        {!loading && filteredRecords.map((record) => (
+          <button
+            key={record.id}
+            onClick={() => setSelectedRecord(record)}
+            className="
+              text-left
+              bg-white
+              border
+              border-gray-200
+              rounded-3xl
+              p-6
+              hover:border-blue-200
+              hover:shadow-lg
+              transition-all
+              duration-200
+              group
+            "
+          >
 
-        {!loading &&
-          filteredRecords.map((record) => (
-            <div
-              key={record.id}
-              className="
-                bg-white
-                border
-                border-gray-200
-                rounded-2xl
-                p-5
-              "
-            >
+            {/* TOP */}
+            <div className="flex items-start justify-between gap-4">
 
-              <div className="
-                flex
-                items-start
-                justify-between
-                gap-4
-              ">
+              <div className="flex-1 min-w-0">
 
-                <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
 
-                  <div className="
-                    flex
-                    items-center
-                    gap-2
-                    flex-wrap
+                  <h3 className="text-lg font-semibold text-gray-900 truncate">
+                    {record?.patient?.full_name || 'Unknown Patient'}
+                  </h3>
+
+                  <span className="
+                    px-2.5
+                    py-1
+                    rounded-full
+                    text-xs
+                    font-semibold
+                    bg-emerald-100
+                    text-emerald-700
                   ">
+                    Completed
+                  </span>
 
-                    <h3 className="
-                      font-semibold
-                      text-gray-900
-                    ">
-                      {record?.patient?.full_name ||
-                        'Unknown Patient'}
-                    </h3>
-
+                  {record?.doctor_finalized && (
                     <span className="
                       px-2.5
                       py-1
                       rounded-full
                       text-xs
                       font-semibold
-                      bg-green-100
-                      text-green-700
+                      bg-blue-100
+                      text-blue-700
                     ">
-                      Completed
+                      Finalized
                     </span>
-                  </div>
-
-                  <p className="
-                    mt-2
-                    text-sm
-                    text-gray-600
-                  ">
-                    {record?.diagnosis ||
-                      'No diagnosis'}
-                  </p>
-
-                  <div className="
-                    mt-4
-                    flex
-                    items-center
-                    gap-2
-                    text-xs
-                    text-gray-400
-                  ">
-                    <CalendarDays className="w-4 h-4" />
-
-                    <span>
-                      {record?.created_at
-                        ? new Date(
-                            record.created_at
-                          ).toLocaleString('en-IN')
-                        : '—'}
-                    </span>
-                  </div>
+                  )}
                 </div>
 
-                <div className="
-                  flex
-                  flex-col
-                  items-end
-                  gap-3
-                ">
+                <p className="mt-3 text-xl font-semibold text-gray-800">
+                  {record?.title || 'Medical Record'}
+                </p>
 
-                  <div className="
-                    w-12
-                    h-12
-                    rounded-2xl
-                    bg-teal-50
-                    flex
-                    items-center
-                    justify-center
-                  ">
-                    <ClipboardCheck className="
-                      w-5
-                      h-5
-                      text-teal-600
-                    " />
-                  </div>
+                <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                  {record?.primary_diagnosis || 'No diagnosis available'}
+                </p>
+              </div>
 
-                  <button
-                    onClick={() =>
-                      setSelectedRecord(record)
-                    }
-                    className="
-                      inline-flex
-                      items-center
-                      gap-2
-                      px-4
-                      py-2
-                      rounded-xl
-                      bg-blue-600
-                      text-white
-                      text-sm
-                      font-medium
-                      hover:bg-blue-700
-                    "
-                  >
-                    <Eye className="w-4 h-4" />
-                    View
-                  </button>
-                </div>
+              <div className="
+                w-14
+                h-14
+                rounded-2xl
+                bg-blue-50
+                flex
+                items-center
+                justify-center
+                shrink-0
+                group-hover:scale-105
+                transition-transform
+              ">
+                <ClipboardCheck className="w-6 h-6 text-blue-600" />
               </div>
             </div>
-          ))}
+
+            {/* BOTTOM */}
+            <div className="mt-6 flex items-center justify-between">
+
+              <div className="flex items-center gap-4 text-xs text-gray-400">
+
+                <div className="flex items-center gap-1.5">
+                  <CalendarDays className="w-4 h-4" />
+                  <span>
+                    {record?.created_at
+                      ? new Date(record.created_at).toLocaleString('en-IN')
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="
+                flex
+                items-center
+                gap-1
+                text-blue-600
+                text-sm
+                font-medium
+              ">
+                Open
+                <ArrowUpRight className="w-4 h-4" />
+              </div>
+            </div>
+          </button>
+        ))}
+
       </div>
+
+      {/* EMPTY */}
+      {!loading && filteredRecords.length === 0 && (
+        <div className="
+          bg-white
+          border
+          border-gray-200
+          rounded-3xl
+          p-14
+          text-center
+        ">
+          <ClipboardCheck className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+
+          <h3 className="text-lg font-semibold text-gray-800">
+            No records found
+          </h3>
+
+          <p className="text-sm text-gray-400 mt-1">
+            Try searching with another keyword
+          </p>
+        </div>
+      )}
 
       {/* MODAL */}
       {selectedRecord && (
@@ -258,6 +236,7 @@ export default function Records() {
           inset-0
           z-50
           bg-black/40
+          backdrop-blur-sm
           flex
           items-center
           justify-center
@@ -266,125 +245,261 @@ export default function Records() {
 
           <div className="
             w-full
-            max-w-2xl
+            max-w-5xl
             bg-white
-            rounded-3xl
+            rounded-[32px]
+            shadow-2xl
             border
-            border-gray-200
-            p-6
+            border-gray-100
+            overflow-hidden
+            max-h-[92vh]
+            flex
+            flex-col
           ">
 
+            {/* HEADER */}
             <div className="
+              px-8
+              py-6
+              border-b
+              border-gray-100
               flex
               items-start
               justify-between
-              gap-4
             ">
 
               <div>
-                <h2 className="
-                  text-lg
-                  font-semibold
-                  text-gray-900
-                ">
-                  Nursing Record
+                <h2 className="text-2xl font-semibold text-gray-900">
+                  Medical Record Detail
                 </h2>
 
-                <p className="
-                  text-sm
-                  text-gray-400
-                  mt-1
-                ">
-                  Patient healthcare summary
+                <p className="text-sm text-gray-400 mt-1">
+                  Patient healthcare summary and nursing observations
                 </p>
               </div>
 
               <button
-                onClick={() =>
-                  setSelectedRecord(null)
-                }
+                onClick={() => setSelectedRecord(null)}
                 className="
-                  text-gray-400
-                  hover:text-gray-700
-                  text-xl
+                  w-10
+                  h-10
+                  rounded-xl
+                  hover:bg-gray-100
+                  flex
+                  items-center
+                  justify-center
+                  transition-all
                 "
               >
-                ×
+                <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
-            <div className="mt-6 space-y-5">
+            {/* CONTENT */}
+            <div className="overflow-y-auto px-8 py-7">
 
-              <div>
-                <p className="
-                  text-xs
-                  uppercase
-                  tracking-wide
-                  text-gray-400
-                ">
-                  Patient
-                </p>
+              {/* PATIENT */}
+              <div className="grid md:grid-cols-2 gap-5">
 
-                <p className="
-                  mt-1
-                  text-sm
-                  font-medium
-                  text-gray-900
-                ">
-                  {
-                    selectedRecord?.patient
-                      ?.full_name
-                  }
-                </p>
-              </div>
+                <div className="bg-gray-50 rounded-2xl p-5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase">
+                    Patient
+                  </p>
 
-              <div>
-                <p className="
-                  text-xs
-                  uppercase
-                  tracking-wide
-                  text-gray-400
-                ">
-                  Diagnosis
-                </p>
+                  <div className="mt-3 flex items-center gap-3">
+                    <div className="
+                      w-11
+                      h-11
+                      rounded-xl
+                      bg-blue-100
+                      flex
+                      items-center
+                      justify-center
+                    ">
+                      <UserRound className="w-5 h-5 text-blue-600" />
+                    </div>
 
-                <p className="
-                  mt-1
-                  text-sm
-                  text-gray-700
-                  leading-relaxed
-                ">
-                  {selectedRecord?.diagnosis ||
-                    'No diagnosis'}
-                </p>
-              </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {selectedRecord?.patient?.full_name}
+                      </p>
 
-              <div>
-                <p className="
-                  text-xs
-                  uppercase
-                  tracking-wide
-                  text-gray-400
-                ">
-                  Notes
-                </p>
+                      <p className="text-sm text-gray-500">
+                        {selectedRecord?.patient?.gender || '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                <div className="
-                  mt-2
-                  rounded-2xl
-                  bg-gray-50
-                  p-4
-                ">
-                  <p className="
-                    text-sm
-                    leading-relaxed
-                    text-gray-700
-                  ">
-                    {selectedRecord?.notes ||
-                      'No notes available'}
+                <div className="bg-gray-50 rounded-2xl p-5">
+                  <p className="text-xs font-semibold text-gray-400 uppercase">
+                    Doctor
+                  </p>
+
+                  <p className="mt-3 font-semibold text-gray-900">
+                    {selectedRecord?.doctor?.full_name}
+                  </p>
+
+                  <p className="text-sm text-gray-500 mt-1">
+                    {selectedRecord?.doctor?.employee_id}
                   </p>
                 </div>
               </div>
+
+              {/* RECORD */}
+              <div className="mt-7">
+
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedRecord?.title}
+                </h3>
+
+                <p className="mt-2 text-gray-600 leading-relaxed">
+                  {selectedRecord?.primary_diagnosis}
+                </p>
+              </div>
+
+              {/* VITALS */}
+              <div className="mt-8">
+                <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">
+                  Patient Vitals
+                </h4>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+                  {[
+                    ['Blood Pressure', selectedRecord?.blood_pressure],
+                    ['Pulse Rate', selectedRecord?.pulse_rate],
+                    ['Temperature', selectedRecord?.temperature_c],
+                    ['SpO2', selectedRecord?.spo2_percent],
+                  ].map(([label, value]) => (
+                    <div
+                      key={label}
+                      className="bg-gray-50 rounded-2xl p-5"
+                    >
+                      <p className="text-xs text-gray-400 font-semibold uppercase">
+                        {label}
+                      </p>
+
+                      <p className="mt-3 text-xl font-semibold text-gray-900">
+                        {value || '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* NOTES */}
+              <div className="mt-8 grid md:grid-cols-2 gap-5">
+
+                {[
+                  ['Observation', selectedRecord?.nurse_observation],
+                  ['Treatment Given', selectedRecord?.treatment_given],
+                  ['Medications', selectedRecord?.medications_administered],
+                  ['Follow-up Notes', selectedRecord?.follow_up_notes],
+                ].map(([title, value]) => (
+                  <div
+                    key={title}
+                    className="bg-gray-50 rounded-2xl p-5"
+                  >
+                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                      {title}
+                    </p>
+
+                    <p className="mt-3 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {value || 'No information available'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* FINALIZED */}
+              {selectedRecord?.doctor_finalized && (
+                <div className="
+                  mt-8
+                  rounded-3xl
+                  border
+                  border-emerald-200
+                  bg-emerald-50
+                  p-6
+                ">
+                  <div className="flex items-center gap-3">
+
+                    <div className="
+                      w-12
+                      h-12
+                      rounded-2xl
+                      bg-emerald-100
+                      flex
+                      items-center
+                      justify-center
+                    ">
+                      <Activity className="w-6 h-6 text-emerald-600" />
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-emerald-800">
+                        Doctor Finalized Record
+                      </h4>
+
+                      <p className="text-sm text-emerald-700 mt-1">
+                        This report has been reviewed and finalized by the doctor.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid md:grid-cols-2 gap-5">
+
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-emerald-700">
+                        Finalized Record ID
+                      </p>
+
+                      <p className="mt-2 text-sm text-emerald-900 break-all">
+                        {selectedRecord?.finalized_record_id}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-emerald-700">
+                        Finalized At
+                      </p>
+
+                      <p className="mt-2 text-sm text-emerald-900">
+                        {selectedRecord?.doctor_finalized_at
+                          ? new Date(selectedRecord.doctor_finalized_at).toLocaleString('en-IN')
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* FOOTER */}
+            <div className="
+              border-t
+              border-gray-100
+              px-8
+              py-5
+              flex
+              justify-end
+            ">
+              <button
+                onClick={() => setSelectedRecord(null)}
+                className="
+                  px-5
+                  py-2.5
+                  rounded-2xl
+                  bg-gray-100
+                  hover:bg-gray-200
+                  text-sm
+                  font-medium
+                  transition-all
+                "
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

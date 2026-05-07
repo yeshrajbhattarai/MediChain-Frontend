@@ -1,98 +1,207 @@
 // src/components/layout/PatientLayout.jsx
-// Layout wrapper for all patient portal pages
 
 import { useState } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  FileText,
+  ShieldCheck,
+  User,
+  LogOut,
+  Menu,
+  X,
+} from 'lucide-react'
+
 import { getPayload, clearTokens } from '../../auth_store/authStore'
+import { confirmDialog } from '../../utils/alert'
 
 const NAV = [
-  { label: 'Dashboard', path: '/patient/dashboard', icon: '🏠' },
-  { label: 'My Records', path: '/patient/records',  icon: '📋' },
-  { label: 'Consent',    path: '/patient/consent',  icon: '🔒' },
-  { label: 'Profile',    path: '/patient/profile',  icon: '⚙️' },
+  {
+    label: 'Dashboard',
+    path: '/patient/dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    label: 'Medical Records',
+    path: '/patient/records',
+    icon: FileText,
+  },
+  {
+    label: 'Consent',
+    path: '/patient/consent',
+    icon: ShieldCheck,
+  },
+  {
+    label: 'Profile',
+    path: '/patient/profile',
+    icon: User,
+  },
 ]
 
-export default function PatientLayout() {
-  const [open, setOpen] = useState(false)
-  const navigate = useNavigate()
-  const payload  = getPayload()
-  const name     = payload?.patient_name || 'Patient'
+const navClass = ({ isActive }) => `
+  flex items-center gap-3
+  px-4 py-3
+  rounded-2xl
+  text-sm font-medium
+  transition-all duration-200
+  ${
+    isActive
+      ? 'bg-blue-600 text-white shadow-sm'
+      : 'text-gray-600 hover:bg-gray-100'
+  }
+`
 
-  function handleLogout() {
+export default function PatientLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const navigate = useNavigate()
+  const payload = getPayload()
+
+  const patientName =
+    payload?.patient_name ||
+    payload?.full_name ||
+    'Patient'
+
+  const handleLogout = async () => {
+    const confirmed = await confirmDialog(
+      'Logout',
+      'Are you sure you want to logout?',
+      'Logout'
+    )
+
+    if (!confirmed) return
+
     clearTokens()
     navigate('/login')
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-
-      {/* Mobile overlay */}
-      {open && (
-        <div className="fixed inset-0 z-20 bg-black/40 md:hidden" onClick={() => setOpen(false)} />
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* MOBILE BACKDROP */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/30 z-30 md:hidden"
+        />
       )}
 
-      {/* Sidebar */}
-      <aside className={`
-        fixed top-0 left-0 h-screen w-56 bg-white border-r border-gray-200 z-30
-        flex flex-col transition-transform duration-200
-        ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static
-      `}>
-        {/* Logo */}
-        <div className="px-5 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-teal-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">M</div>
-            <span className="font-semibold text-gray-900">MediChain</span>
+      {/* SIDEBAR */}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-40
+          w-64 bg-white border-r border-gray-200
+          flex flex-col
+          transition-transform duration-300
+          md:translate-x-0
+          ${
+            sidebarOpen
+              ? 'translate-x-0'
+              : '-translate-x-full'
+          }
+        `}
+      >
+        {/* LOGO */}
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-blue-600">
+              MediChain
+            </h1>
+
+            <p className="text-sm text-gray-400 mt-1">
+              Patient Portal
+            </p>
           </div>
-          <p className="text-xs text-teal-600 mt-0.5 font-medium">Patient Portal</p>
+
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden p-2 rounded-xl hover:bg-gray-100"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {NAV.map(({ label, path, icon }) => (
-            <NavLink
-              key={path}
-              to={path}
-              onClick={() => setOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-                 ${isActive
-                   ? 'bg-teal-50 text-teal-700'
-                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`
-              }
-            >
-              <span>{icon}</span>
-              {label}
-            </NavLink>
-          ))}
+        {/* NAVIGATION */}
+        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          {NAV.map(item => {
+            const Icon = item.icon
+
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={navClass}
+                onClick={() => setSidebarOpen(false)}
+              >
+                <Icon className="w-5 h-5" />
+                {item.label}
+              </NavLink>
+            )
+          })}
         </nav>
 
-        {/* Logout */}
-        <div className="px-3 py-4 border-t border-gray-100">
+        {/* LOGOUT */}
+        <div className="p-4 border-t border-gray-100">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2 w-full rounded-lg text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
+            className="
+              w-full
+              flex items-center gap-3
+              px-4 py-3
+              rounded-2xl
+              text-sm font-medium
+              text-red-500
+              hover:bg-red-50
+              transition-all
+            "
           >
-            <span>🚪</span> Logout
+            <LogOut className="w-5 h-5" />
+            Logout
           </button>
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <button onClick={() => setOpen(true)} className="md:hidden text-gray-600 text-xl">☰</button>
-          <div className="flex items-center gap-3 ml-auto">
+      {/* MAIN */}
+      <main className="flex-1 flex flex-col md:ml-64 min-h-screen">
+        {/* TOPBAR */}
+        <header className="sticky top-0 z-20 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          {/* MOBILE MENU */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden p-2 rounded-xl hover:bg-gray-100"
+          >
+            <Menu className="w-5 h-5 text-gray-700" />
+          </button>
+
+          {/* PROFILE */}
+          <div className="ml-auto flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-800">{name}</p>
-              <p className="text-xs text-gray-400">Patient</p>
+              <p className="text-sm font-semibold text-gray-800">
+                {patientName}
+              </p>
+
+              <p className="text-xs text-gray-400">
+                Patient
+              </p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-semibold text-sm">
-              {name[0] || 'P'}
+
+            <div className="
+              w-10 h-10
+              rounded-full
+              bg-blue-100
+              text-blue-600
+              flex items-center justify-center
+              text-sm font-semibold
+            ">
+              {patientName?.charAt(0) || 'P'}
             </div>
           </div>
         </header>
-        <div className="flex-1 px-6 py-6 overflow-y-auto">
-          <Outlet />
+
+        {/* PAGE CONTENT */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 md:p-8">
+            <Outlet />
+          </div>
         </div>
       </main>
     </div>
