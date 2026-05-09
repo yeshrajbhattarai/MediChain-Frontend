@@ -146,7 +146,7 @@ export default function QueueDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-transparent pb-32">
+    <div className="flex flex-col gap-6 pb-32">
       <PageHeader
         title="Complete Task"
         subtitle={`Patient: ${queue?.patient?.full_name || 'Unknown'}`}

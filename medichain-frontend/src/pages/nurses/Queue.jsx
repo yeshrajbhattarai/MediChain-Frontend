@@ -67,7 +67,7 @@ export default function NurseQueue() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-transparent">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Assigned Queue"
         subtitle="Manage your patient care workflow and complete tasks"
