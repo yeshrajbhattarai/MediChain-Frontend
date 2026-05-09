@@ -9,14 +9,49 @@ import {
 } from 'lucide-react'
 
 import {
-  getDoctorRecords,
-  getDoctorRecordDetail,
+  getDoctorMedicalRecords,
+  getMedicalRecordIntegrity,
 } from '../../api/doctor'
 
 // ─── Preview Modal ────────────────────────────────────────────────────────────
+    function MedicalRecordPreviewModal({ record, open, onClose }) {
 
-function MedicalRecordPreviewModal({ record, open, onClose }) {
-  if (!open || !record) return null
+      const [integrity, setIntegrity] = useState(null)
+      const [integrityLoading, setIntegrityLoading] = useState(false)
+
+      useEffect(() => {
+  if (!record?.finalized_record_id) return
+
+  async function loadIntegrity() {
+    try {
+      setIntegrityLoading(true)
+
+      console.log(
+        'Fetching integrity for:',
+        record.finalized_record_id
+      )
+
+      const data = await getMedicalRecordIntegrity(
+        record.finalized_record_id
+      )
+
+      console.log('Integrity Response:', data)
+
+      setIntegrity(data)
+
+    } catch (err) {
+      console.error('Integrity fetch failed:', err)
+
+    } finally {
+      setIntegrityLoading(false)
+    }
+  }
+
+  loadIntegrity()
+
+}, [record])
+
+      if (!open || !record) return null
 
   return (
     <div
@@ -38,24 +73,39 @@ function MedicalRecordPreviewModal({ record, open, onClose }) {
             <div className="flex items-center gap-3 flex-wrap">
 
               <h2 className="text-xl font-semibold text-gray-900">
-                {record.lab_name || 'Medical Record'}
+                {record.title || 'Medical Record'}
               </h2>
 
               <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                v{record.version || 1}
+                Finalized
               </span>
+
             </div>
 
             <p className="text-sm text-gray-400 mt-1">
-              Record ID: {record.record_id}
+              Record ID: {record.finalized_record_id || '—'}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
 
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-medium">
+            <div
+              className={`
+                flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium
+                ${
+                  integrity?.integrity?.is_verified
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-red-100 text-red-700'
+                }
+              `}
+            >
               <ShieldCheck className="w-4 h-4" />
-              Verified
+
+              {integrityLoading
+                ? 'Checking Integrity...'
+                : integrity?.integrity?.is_verified
+                  ? 'Record Integrity Verified'
+                  : 'Integrity Check Failed'}
             </div>
 
             <button
@@ -75,23 +125,27 @@ function MedicalRecordPreviewModal({ record, open, onClose }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
             <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
+
               <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
                 Patient
               </p>
 
               <p className="font-semibold text-gray-900">
-                {record.patient_name || '—'}
+                {record.patient?.full_name || '—'}
               </p>
+
             </div>
 
             <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
+
               <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-                Recorded By
+                Doctor
               </p>
 
               <p className="font-semibold text-gray-900">
-                {record.recorded_by_name || '—'}
+                {record.doctor?.full_name || '—'}
               </p>
+
             </div>
 
           </div>
@@ -100,15 +154,17 @@ function MedicalRecordPreviewModal({ record, open, onClose }) {
           <div className="border border-gray-100 rounded-2xl p-5">
 
             <div className="flex items-center gap-2 mb-4">
+
               <Activity className="w-5 h-5 text-teal-600" />
 
               <h3 className="font-semibold text-gray-900">
                 Diagnosis
               </h3>
+
             </div>
 
             <p className="text-gray-700 leading-relaxed">
-              {record.diagnosis || 'No diagnosis available.'}
+              {record.primary_diagnosis || 'No diagnosis available.'}
             </p>
 
           </div>
@@ -121,7 +177,7 @@ function MedicalRecordPreviewModal({ record, open, onClose }) {
             </h3>
 
             <p className="text-gray-700 leading-relaxed">
-              {record.treatment_plan || 'No treatment plan available.'}
+              {record.treatment_given || 'No treatment plan available.'}
             </p>
 
           </div>
@@ -135,34 +191,71 @@ function MedicalRecordPreviewModal({ record, open, onClose }) {
 
             <div className="space-y-3">
 
-              {record.custom_field_values &&
-              Object.keys(record.custom_field_values).length > 0 ? (
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <span className="text-sm text-gray-500">
+                  Blood Pressure
+                </span>
 
-                Object.entries(record.custom_field_values).map(([key, value]) => (
+                <span className="font-semibold text-gray-900">
+                  {record.blood_pressure || '—'}
+                </span>
+              </div>
 
-                  <div
-                    key={key}
-                    className="flex items-center justify-between border-b border-gray-100 pb-3"
-                  >
-                    <span className="text-sm text-gray-500 capitalize">
-                      {key.replaceAll('_', ' ')}
-                    </span>
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <span className="text-sm text-gray-500">
+                  Pulse Rate
+                </span>
 
-                    <span className="font-semibold text-gray-900">
-                      {String(value)}
-                    </span>
-                  </div>
-                ))
+                <span className="font-semibold text-gray-900">
+                  {record.pulse_rate || '—'}
+                </span>
+              </div>
 
-              ) : (
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <span className="text-sm text-gray-500">
+                  Temperature
+                </span>
 
-                <p className="text-sm text-gray-400">
-                  No clinical values available.
-                </p>
+                <span className="font-semibold text-gray-900">
+                  {record.temperature_c || '—'} °C
+                </span>
+              </div>
 
-              )}
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <span className="text-sm text-gray-500">
+                  SPO2
+                </span>
+
+                <span className="font-semibold text-gray-900">
+                  {record.spo2_percent || '—'}%
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  Blood Sugar
+                </span>
+
+                <span className="font-semibold text-gray-900">
+                  {record.random_blood_sugar || '—'}
+                </span>
+              </div>
 
             </div>
+
+          </div>
+
+          {/* NURSE NOTES */}
+          <div className="border border-gray-100 rounded-2xl p-5">
+
+            <h3 className="font-semibold text-gray-900 mb-4">
+              Nurse Observation
+            </h3>
+
+            <p className="text-gray-700 leading-relaxed">
+              {record.nurse_observation || 'No observations available.'}
+            </p>
+
           </div>
 
         </div>
@@ -178,19 +271,21 @@ export default function DoctorMedicalRecords() {
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [integrity, setIntegrity] = useState(null)
+  const [integrityLoading, setIntegrityLoading] = useState(false)
 
   useEffect(() => {
     let mounted = true
 
     async function loadRecords() {
       try {
-        const data = await getDoctorRecords()
+        const data = await getDoctorMedicalRecords()
 
         if (!mounted) return
 
-        const rows = Array.isArray(data?.records)
-          ? data.records
-          : []
+        const rows = Array.isArray(data)
+        ? data
+        : []
 
         setRecords(rows)
 
@@ -213,24 +308,14 @@ export default function DoctorMedicalRecords() {
   const filteredRecords = useMemo(() => {
     return records.filter((r) => {
       const text = `
-        ${r.patient_name || ''}
-        ${r.record_id || ''}
-        ${r.lab_name || ''}
+        ${r.patient?.full_name || ''}
+        ${r.finalized_record_id || ''}
+        ${r.title || ''}
       `.toLowerCase()
 
       return text.includes(query.toLowerCase())
     })
   }, [records, query])
-
-  const openRecord = async (recordId) => {
-    try {
-      const data = await getDoctorRecordDetail(recordId)
-      setSelected(data)
-
-    } catch (err) {
-      console.error(err)
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -327,8 +412,9 @@ export default function DoctorMedicalRecords() {
             {filteredRecords.map((record) => (
 
               <button
-                key={record.record_id}
-                onClick={() => openRecord(record.record_id)}
+                key={record.finalized_record_id || record.id}
+                onClick={() => setSelected(record)}
+                // onClick={() => openRecord(record.finalized_record_id)} //! this is temporary
                 className="
                   w-full
                   text-left
@@ -347,7 +433,7 @@ export default function DoctorMedicalRecords() {
                     <div className="flex items-center gap-2 flex-wrap">
 
                       <p className="font-semibold text-gray-900 truncate text-base">
-                        {record.patient_name || 'Unknown Patient'}
+                        {record.patient?.full_name || 'Unknown Patient'}
                       </p>
 
                       <span className="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-blue-100 text-blue-700">
@@ -358,7 +444,7 @@ export default function DoctorMedicalRecords() {
 
                     {/* LAB */}
                     <p className="mt-2 text-sm text-gray-600 font-medium">
-                      {record.lab_name || 'Medical Record'}
+                      {record.title || 'Medical Record'}
                     </p>
 
                     {/* DATE */}

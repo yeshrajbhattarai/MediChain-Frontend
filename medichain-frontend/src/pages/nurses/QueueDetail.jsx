@@ -1,43 +1,28 @@
-// src/pages/nurses/QueueDetail.jsx
+// src/pages/nurse/QueueDetail.jsx
+// FIXED: Back button, breadcrumbs, better UX, sticky actions
 
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-
 import {
-  ArrowLeft,
-  Activity,
-  User,
-  ClipboardList,
-  Stethoscope,
   Thermometer,
   HeartPulse,
   Droplets,
-  Save,
+  AlertCircle,
+  Loader,
+  CheckCircle2,
 } from 'lucide-react'
-
-import {
-  getNurseQueueItem,
-  completeNurseQueueItem,
-} from '../../api/nurse'
-
-import Spinner from '../../components/ui/Spinner'
-
-import {
-  successToast,
-  errorToast,
-  confirmDialog,
-} from '../../utils/alert'
+import PageHeader from '../../components/layout/PageHeader'
+import { getNurseQueueItem, completeNurseQueueItem } from '../../api/nurse'
 
 export default function QueueDetail() {
   const { id } = useParams()
-
   const navigate = useNavigate()
 
   const [queue, setQueue] = useState(null)
-
   const [loading, setLoading] = useState(true)
-
+  const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState('')
 
   const [form, setForm] = useState({
     blood_pressure: '',
@@ -51,7 +36,8 @@ export default function QueueDetail() {
     medications_administered: '',
     follow_up_notes: '',
   })
-  const isCompleted = queue?.status === 'completed'
+
+  const [errors, setErrors] = useState({})
 
   useEffect(() => {
     loadQueueDetail()
@@ -60,447 +46,431 @@ export default function QueueDetail() {
   async function loadQueueDetail() {
     try {
       setLoading(true)
-
+      setError('')
       const data = await getNurseQueueItem(id)
-
-      console.log('Queue Detail:', data)
-
       setQueue(data)
     } catch (err) {
       console.error(err)
-
-      errorToast('Failed to load queue detail')
+      setError(err.message || 'Failed to load task')
     } finally {
       setLoading(false)
     }
   }
 
-  function handleChange(e) {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    })
+  const validateForm = () => {
+    const newErrors = {}
+
+    if (!form.blood_pressure.trim()) newErrors.blood_pressure = 'Required'
+    if (!form.pulse_rate) newErrors.pulse_rate = 'Required'
+    else if (isNaN(form.pulse_rate)) newErrors.pulse_rate = 'Must be a number'
+
+    if (!form.temperature_c) newErrors.temperature_c = 'Required'
+    else if (isNaN(form.temperature_c)) newErrors.temperature_c = 'Must be a number'
+
+    if (!form.spo2_percent) newErrors.spo2_percent = 'Required'
+    else if (isNaN(form.spo2_percent)) newErrors.spo2_percent = 'Must be a number'
+
+    if (!form.nurse_tests_performed.trim()) newErrors.nurse_tests_performed = 'Required'
+    if (!form.nurse_observation.trim()) newErrors.nurse_observation = 'Required'
+    if (!form.treatment_given.trim()) newErrors.treatment_given = 'Required'
+    if (!form.medications_administered.trim()) newErrors.medications_administered = 'Required'
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
   }
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault()
 
-    const confirmed = await confirmDialog(
-      'Complete Queue Task',
-      'Are you sure you want to submit this healthcare record?',
-      'Submit Record',
-      false
-    )
-
-    if (!confirmed) return
+    if (!validateForm()) {
+      setToast('Please fill all required fields correctly')
+      setTimeout(() => setToast(''), 3000)
+      return
+    }
 
     try {
       setSaving(true)
-
       await completeNurseQueueItem(id, form)
-
-      successToast('Queue item completed successfully')
-
-      navigate('/nurse/queue')
+      setToast('Task completed successfully!')
+      setTimeout(() => {
+        navigate('/nurse/queue')
+      }, 2000)
     } catch (err) {
       console.error(err)
-
-      errorToast(
-        err?.message ||
-          'Failed to complete queue item'
-      )
+      setToast(err.message || 'Failed to complete task')
+      setTimeout(() => setToast(''), 3000)
     } finally {
       setSaving(false)
     }
   }
 
   if (loading) {
-    return <Spinner fullPage />
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <Loader className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Loading task...</p>
+        </div>
+      </div>
+    )
   }
 
-  if (!queue) {
+  if (error || !queue) {
     return (
-      <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
-        <p className="text-sm text-gray-500">
-          Queue item not found
-        </p>
+      <div>
+        <PageHeader
+          title="Queue Item"
+          subtitle="Complete assigned nursing task"
+          breadcrumbs={[
+            { label: 'Nurse Portal', href: '/nurse/dashboard' },
+            { label: 'Queue', href: '/nurse/queue' },
+            { label: 'Task Detail' },
+          ]}
+          showBack
+        />
+
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl p-6">
+          <AlertCircle className="w-6 h-6 text-red-600 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-red-900">{error || 'Task not found'}</p>
+            <button
+              onClick={() => navigate('/nurse/queue')}
+              className="text-xs text-red-600 hover:text-red-700 font-medium mt-3"
+            >
+              Go back to queue
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* TOP BAR */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/nurse/queue')}
-            className="
-              w-10
-              h-10
-              rounded-xl
-              border
-              border-gray-200
-              bg-white
-              hover:bg-gray-50
-              flex
-              items-center
-              justify-center
-              transition
-            "
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-transparent pb-32">
+      <PageHeader
+        title="Complete Task"
+        subtitle={`Patient: ${queue?.patient?.full_name || 'Unknown'}`}
+        breadcrumbs={[
+          { label: 'Nurse Portal', href: '/nurse/dashboard' },
+          { label: 'Queue', href: '/nurse/queue' },
+          { label: 'Task Detail' },
+        ]}
+        showBack
+      />
 
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
-              Queue Detail
-            </h1>
-
-            <p className="text-sm text-gray-400 mt-0.5">
-              Complete assigned patient healthcare task
-            </p>
-          </div>
-        </div>
-
-        <span
-          className="
-            px-3
-            py-1.5
-            rounded-full
-            text-xs
-            font-semibold
-            bg-amber-100
-            text-amber-700
-          "
+      {/* TOAST */}
+      {toast && (
+        <div
+          className={`
+            mb-6
+            flex
+            items-center
+            gap-3
+            px-5
+            py-3
+            rounded-xl
+            text-sm
+            font-medium
+            animate-in
+            fade-in
+            ${
+              toast.includes('successfully')
+                ? 'bg-emerald-600 text-white'
+                : 'bg-red-500 text-white'
+            }
+          `}
         >
-          {(queue?.status || 'pending')
-            .replace('_', ' ')
-            .toUpperCase()}
-        </span>
-      </div>
+          {toast.includes('successfully') ? (
+            <CheckCircle2 size={16} />
+          ) : (
+            <AlertCircle size={16} />
+          )}
+          {toast}
+        </div>
+      )}
 
-      {/* PATIENT CARD */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <div className="flex items-start justify-between gap-5 flex-wrap">
-          {/* LEFT */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-blue-600" />
-
-              <h2 className="text-lg font-semibold text-gray-900">
-                {queue?.patient?.full_name ||
-                  'Unknown Patient'}
-              </h2>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* PATIENT CARD */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            {queue?.title || 'Healthcare Task'}
+          </h2>
+          <p className="text-sm text-gray-600">
+            {queue?.primary_diagnosis || 'No diagnosis available'}
+          </p>
+          {queue?.doctor_note && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Doctor's Note</p>
+              <p className="text-sm text-gray-700">{queue.doctor_note}</p>
             </div>
-
-            <p className="text-sm text-gray-500 mt-3">
-              {queue?.primary_diagnosis ||
-                'No diagnosis available'}
-            </p>
-
-            <div className="flex flex-wrap items-center gap-4 mt-5 text-sm text-gray-500">
-              <div className="flex items-center gap-2">
-                <ClipboardList className="w-4 h-4 text-gray-400" />
-
-                <span>
-                  {queue?.title || 'Healthcare Task'}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Stethoscope className="w-4 h-4 text-gray-400" />
-
-                <span>
-                  {queue?.doctor?.full_name || 'Doctor'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT */}
-          <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0">
-            <Activity className="w-6 h-6 text-teal-600" />
-          </div>
+          )}
         </div>
 
-        {/* DOCTOR NOTE */}
-        {queue?.doctor_note && (
-          <div className="mt-6 border-t border-gray-100 pt-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
-              Doctor Note
-            </p>
+        {/* VITALS SECTION */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-5">Patient Vitals</h3>
 
-            <p className="text-sm leading-relaxed text-gray-700">
-              {queue.doctor_note}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* FORM */}
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-6"
-      >
-        {/* VITALS */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-5">
-            Patient Vitals
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            {/* BP */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Blood Pressure */}
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-2 block">
-                Blood Pressure
+              <label className="text-xs font-semibold text-gray-600 uppercase block mb-2">
+                Blood Pressure *
               </label>
-
               <div className="relative">
                 <HeartPulse className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-
                 <input
                   type="text"
                   name="blood_pressure"
                   value={form.blood_pressure}
-                  onChange={handleChange}
+                  onChange={(e) => setForm({ ...form, blood_pressure: e.target.value })}
                   placeholder="120/80"
-                  className="
+                  className={`
                     w-full
                     pl-10
                     pr-4
-                    py-3
-                    rounded-xl
-                    border
-                    border-gray-200
+                    py-2.5
+                    rounded-lg
                     text-sm
+                    border
+                    ${errors.blood_pressure ? 'border-red-400 bg-red-50' : 'border-gray-200'}
                     outline-none
                     focus:ring-2
                     focus:ring-blue-100
                     focus:border-blue-400
-                  "
+                  `}
                 />
               </div>
+              {errors.blood_pressure && (
+                <p className="text-xs text-red-600 mt-1">{errors.blood_pressure}</p>
+              )}
             </div>
 
-            {/* Pulse */}
+            {/* Pulse Rate */}
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-2 block">
-                Pulse Rate
+              <label className="text-xs font-semibold text-gray-600 uppercase block mb-2">
+                Pulse Rate (bpm) *
               </label>
-
               <input
                 type="number"
                 name="pulse_rate"
                 value={form.pulse_rate}
-                onChange={handleChange}
+                onChange={(e) => setForm({ ...form, pulse_rate: e.target.value })}
                 placeholder="72"
-                className="
+                className={`
                   w-full
                   px-4
-                  py-3
-                  rounded-xl
-                  border
-                  border-gray-200
+                  py-2.5
+                  rounded-lg
                   text-sm
+                  border
+                  ${errors.pulse_rate ? 'border-red-400 bg-red-50' : 'border-gray-200'}
                   outline-none
                   focus:ring-2
                   focus:ring-blue-100
                   focus:border-blue-400
-                "
+                `}
               />
+              {errors.pulse_rate && (
+                <p className="text-xs text-red-600 mt-1">{errors.pulse_rate}</p>
+              )}
             </div>
 
-            {/* Temp */}
+            {/* Temperature */}
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-2 block">
-                Temperature °C
+              <label className="text-xs font-semibold text-gray-600 uppercase block mb-2">
+                Temperature °C *
               </label>
-
               <div className="relative">
                 <Thermometer className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-
                 <input
                   type="number"
                   step="0.1"
                   name="temperature_c"
                   value={form.temperature_c}
-                  onChange={handleChange}
+                  onChange={(e) => setForm({ ...form, temperature_c: e.target.value })}
                   placeholder="36.5"
-                  className="
+                  className={`
                     w-full
                     pl-10
                     pr-4
-                    py-3
-                    rounded-xl
-                    border
-                    border-gray-200
+                    py-2.5
+                    rounded-lg
                     text-sm
+                    border
+                    ${errors.temperature_c ? 'border-red-400 bg-red-50' : 'border-gray-200'}
                     outline-none
                     focus:ring-2
                     focus:ring-blue-100
                     focus:border-blue-400
-                  "
+                  `}
                 />
               </div>
+              {errors.temperature_c && (
+                <p className="text-xs text-red-600 mt-1">{errors.temperature_c}</p>
+              )}
             </div>
 
-            {/* SPO2 */}
+            {/* SpO2 */}
             <div>
-              <label className="text-xs font-medium text-gray-500 mb-2 block">
-                SPO2 %
+              <label className="text-xs font-semibold text-gray-600 uppercase block mb-2">
+                SpO2 (%) *
               </label>
-
               <div className="relative">
                 <Droplets className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-
                 <input
                   type="number"
                   name="spo2_percent"
                   value={form.spo2_percent}
-                  onChange={handleChange}
+                  onChange={(e) => setForm({ ...form, spo2_percent: e.target.value })}
                   placeholder="98"
-                  className="
+                  className={`
                     w-full
                     pl-10
                     pr-4
-                    py-3
-                    rounded-xl
-                    border
-                    border-gray-200
+                    py-2.5
+                    rounded-lg
                     text-sm
+                    border
+                    ${errors.spo2_percent ? 'border-red-400 bg-red-50' : 'border-gray-200'}
                     outline-none
                     focus:ring-2
                     focus:ring-blue-100
                     focus:border-blue-400
-                  "
+                  `}
                 />
               </div>
+              {errors.spo2_percent && (
+                <p className="text-xs text-red-600 mt-1">{errors.spo2_percent}</p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* NOTES */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h2 className="text-sm font-semibold text-gray-800 mb-5">
-            Nurse Assessment
-          </h2>
+        {/* ASSESSMENT SECTION */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-6">
+          <h3 className="text-sm font-semibold text-gray-900 mb-5">Nursing Assessment</h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="space-y-4">
             {[
               {
                 name: 'random_blood_sugar',
-                label: 'Random Blood Sugar',
+                label: 'Random Blood Sugar (Optional)',
+                required: false,
               },
               {
                 name: 'nurse_tests_performed',
-                label: 'Tests Performed',
+                label: 'Tests Performed *',
+                required: true,
               },
               {
                 name: 'nurse_observation',
-                label: 'Nurse Observation',
+                label: 'Observation *',
+                required: true,
               },
               {
                 name: 'treatment_given',
-                label: 'Treatment Given',
+                label: 'Treatment Given *',
+                required: true,
               },
               {
                 name: 'medications_administered',
-                label: 'Medications Administered',
+                label: 'Medications *',
+                required: true,
               },
               {
                 name: 'follow_up_notes',
-                label: 'Follow Up Notes',
+                label: 'Follow-up Notes (Optional)',
+                required: false,
               },
             ].map((field) => (
-              <div
-                key={field.name}
-                className={
-                  field.name === 'follow_up_notes'
-                    ? 'md:col-span-2'
-                    : ''
-                }
-              >
-                <label className="text-xs font-medium text-gray-500 mb-2 block">
+              <div key={field.name}>
+                <label className="text-xs font-semibold text-gray-600 uppercase block mb-2">
                   {field.label}
                 </label>
-
                 <textarea
-                  rows={4}
+                  rows={3}
                   name={field.name}
                   value={form[field.name]}
-                  onChange={handleChange}
-                  className="
+                  onChange={(e) => setForm({ ...form, [field.name]: e.target.value })}
+                  className={`
                     w-full
                     px-4
-                    py-3
-                    rounded-xl
-                    border
-                    border-gray-200
+                    py-2.5
+                    rounded-lg
                     text-sm
-                    outline-none
+                    border
                     resize-none
+                    ${errors[field.name] ? 'border-red-400 bg-red-50' : 'border-gray-200'}
+                    outline-none
                     focus:ring-2
                     focus:ring-blue-100
                     focus:border-blue-400
-                  "
+                  `}
                 />
+                {errors[field.name] && (
+                  <p className="text-xs text-red-600 mt-1">{errors[field.name]}</p>
+                )}
               </div>
             ))}
           </div>
         </div>
-
-        {/* ACTIONS */}
-        <div className="sticky bottom-0 bg-gray-50 pb-2">
-          <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-end gap-3 shadow-sm">
-            <button
-              type="button"
-              onClick={() => navigate('/nurse/queue')}
-              className="
-                px-5
-                py-2.5
-                rounded-xl
-                border
-                border-gray-200
-                bg-white
-                text-sm
-                font-medium
-                text-gray-700
-                hover:bg-gray-50
-                transition
-              "
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="
-                inline-flex
-                items-center
-                gap-2
-                px-5
-                py-2.5
-                rounded-xl
-                bg-blue-600
-                hover:bg-blue-700
-                text-white
-                text-sm
-                font-medium
-                transition
-                disabled:opacity-60
-              "
-            >
-              <Save className="w-4 h-4" />
-
-              {saving
-                ? 'Submitting...'
-                : 'Complete Task'}
-            </button>
-          </div>
-        </div>
       </form>
+
+      {/* STICKY BOTTOM ACTION BAR */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-end gap-3">
+          <button
+            onClick={() => navigate('/nurse/queue')}
+            className="
+              px-5
+              py-2.5
+              rounded-lg
+              border
+              border-gray-200
+              bg-white
+              text-sm
+              font-medium
+              text-gray-700
+              hover:bg-gray-50
+              transition-all
+            "
+          >
+            Cancel
+          </button>
+
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="
+              flex
+              items-center
+              gap-2
+              px-6
+              py-2.5
+              rounded-lg
+              bg-blue-600
+              hover:bg-blue-700
+              text-white
+              text-sm
+              font-medium
+              transition-all
+              disabled:opacity-60
+            "
+          >
+            {saving ? (
+              <>
+                <Loader className="w-4 h-4 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                Complete Task
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

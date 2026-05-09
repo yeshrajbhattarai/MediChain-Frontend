@@ -50,3 +50,14 @@ export const sendPatientToLab = (body) =>
     method: 'POST',
     body: JSON.stringify(body),
   }).then(r => r.json())
+
+  export const getDoctorMedicalRecords = () =>
+  api('/staff/doctor/medical-records/').then(r => r.json())
+
+  export async function getMedicalRecordIntegrity(recordId) {
+  const response = await api.get(
+    `/staff/doctor/medical-records/${recordId}/integrity/`
+  )
+
+  return response.data
+}
