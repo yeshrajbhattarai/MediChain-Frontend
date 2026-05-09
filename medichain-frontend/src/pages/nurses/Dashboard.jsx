@@ -71,7 +71,7 @@ export default function NurseDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-transparent">
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Nurse Dashboard"
         subtitle="Overview of your assigned tasks and patient care workflow"
