@@ -1,63 +1,55 @@
-// src/api/doctor.js
-
-import { getAccessToken } from '../auth_store/authStore'
-
-const BASE = 'http://localhost:8000/api/v1'
-
-const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAccessToken() || ''}`,
-      ...opts.headers,
-    },
-  })
-
-// ── Doctor Dashboard ─────────────────────────────────────────────────────────
+import { get, post } from './client'
 
 export const getDoctorDashboard = () =>
-  api('/staff/doctor/dashboard/').then(r => r.json())
-
-// ── Patients ────────────────────────────────────────────────────────────────
+  get('/api/v1/staff/doctor/dashboard/')
 
 export const getDoctorPatients = () =>
-  api('/staff/doctor/patients/').then(r => r.json())
+  get('/api/v1/staff/doctor/patients/')
 
 export const getDoctorPatientDetail = (patientId) =>
-  api(`/staff/doctor/patients/${patientId}/`).then(r => r.json())
-
-// ── Records ─────────────────────────────────────────────────────────────────
-
-export const getDoctorRecords = () =>
-  api('/staff/doctor/records/').then(r => r.json())
-
-export const getDoctorRecordDetail = (recordId) =>
-  api(`/staff/records/${recordId}/`).then(r => r.json())
-
-// ── Nurse Assignment ────────────────────────────────────────────────────────
+  get(`/api/v1/staff/doctor/patients/${patientId}/`)
 
 export const assignNurse = (patientId, nurse_id) =>
-  api(`/staff/doctor/patients/${patientId}/assign-nurse/`, {
-    method: 'POST',
-    body: JSON.stringify({ nurse_id }),
-  }).then(r => r.json())
+  post(`/api/v1/staff/doctor/patients/${patientId}/assign-nurse/`, { nurse_id })
 
-// ── Send To Lab ─────────────────────────────────────────────────────────────
+export const assignTechnician = (patientId, tech_id) =>
+  post(`/api/v1/staff/doctor/patients/${patientId}/assign-technician/`, { tech_id })
 
-export const sendPatientToLab = (body) =>
-  api('/staff/lab-requests/create/', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  }).then(r => r.json())
+export const sendPatientToLab = (patientId, body) =>
+  post(`/api/v1/staff/doctor/patients/${patientId}/send-to-lab/`, body)
 
-  export const getDoctorMedicalRecords = () =>
-  api('/staff/doctor/medical-records/').then(r => r.json())
+export const createDoctorMedicalRecord = (patientId, body) =>
+  post(`/api/v1/staff/doctor/patients/${patientId}/create-medical-record/`, body)
 
-  export async function getMedicalRecordIntegrity(recordId) {
-  const response = await api.get(
-    `/staff/doctor/medical-records/${recordId}/integrity/`
-  )
+export const getDoctorRecords = () =>
+  get('/api/v1/staff/doctor/records/')
 
-  return response.data
+export const getDoctorRecordDetail = (recordId) =>
+  get(`/api/v1/staff/records/${recordId}/`)
+
+export const getDoctorMedicalRecords = () =>
+  get('/api/v1/staff/doctor/medical-records/')
+
+export const getMedicalRecordIntegrity = (recordId, version = null) => {
+  const query = version ? `?v=${encodeURIComponent(version)}` : ''
+  return get(`/api/v1/staff/doctor/medical-records/${recordId}/integrity/${query}`)
 }
+
+export const getDoctorApprovalQueue = () =>
+  get('/api/v1/staff/doctor/approval-queue/')
+
+export const getDoctorApprovalQueueItem = (itemId) =>
+  get(`/api/v1/staff/doctor/approval-queue/${itemId}/`)
+
+export const finalizeApprovalQueueItem = (itemId, body) =>
+  post(`/api/v1/staff/doctor/approval-queue/${itemId}/`, body)
+
+export const approveApprovalQueueItem = (itemId, body) =>
+  post(`/api/v1/staff/doctor/approval-queue/${itemId}/approve/`, body)
+
+export const rejectApprovalQueueItem = (itemId, reason) =>
+  post(`/api/v1/staff/doctor/approval-queue/${itemId}/reject/`, { reason })
+
+export const requestCkdPrediction = (patient_id, record_id) =>
+  post('/api/ml/predict/ckd/', { patient_id, record_id })
+

@@ -3,18 +3,11 @@
 
 import { useState, useEffect } from 'react'
 import { successToast, errorToast } from '../../utils/alert'
-
-const BASE = 'http://localhost:8000/api/v1'
-
-const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('access') || ''}`,
-      ...opts.headers,
-    },
-  })
+import {
+  finalizeApprovalQueueItem,
+  getDoctorApprovalQueue,
+  rejectApprovalQueueItem,
+} from '../../api/doctor'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -52,11 +45,10 @@ function StatCard({ label, value, icon, color = 'blue' }) {
 // ─── Approval Modal ───────────────────────────────────────────────────────
 
 function ApprovalModal({ item, open, onClose, onApproved }) {
-  const [step, setStep] = useState('review') // 'review' | 'approve' | 'reject' | 'request'
+  const [step, setStep] = useState('review') // 'review' | 'approve' | 'reject'
   const [finalNotes, setFinalNotes] = useState('')
   const [appointmentDate, setAppointmentDate] = useState('')
   const [rejectionReason, setRejectionReason] = useState('')
-  const [changeRequest, setChangeRequest] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   if (!open) return null
@@ -66,28 +58,23 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
       errorToast('Please set next appointment date')
       return
     }
+    if (!finalNotes.trim()) {
+      errorToast('Please add final doctor notes')
+      return
+    }
 
     setSubmitting(true)
     try {
-      const res = await api(`/staff/doctor/approval-queue/${item.id}/approve/`, {
-        method: 'POST',
-        body: JSON.stringify({
-          next_appointment_date: appointmentDate,
-          final_notes: finalNotes,
-        }),
+      await finalizeApprovalQueueItem(item.id, {
+        doctor_final_notes: finalNotes.trim(),
+        next_appointment_date: appointmentDate,
       })
-
-      const data = await res.json()
-      if (!res.ok) {
-        errorToast(data.error || 'Approval failed')
-        return
-      }
 
       successToast('Record approved and finalized')
       onApproved()
       onClose()
-    } catch {
-      errorToast('Network error')
+    } catch (error) {
+      errorToast(error?.data?.error || error?.message || 'Approval failed')
     } finally {
       setSubmitting(false)
     }
@@ -101,58 +88,13 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
 
     setSubmitting(true)
     try {
-      const res = await api(`/staff/doctor/approval-queue/${item.id}/reject/`, {
-        method: 'POST',
-        body: JSON.stringify({
-          reason: rejectionReason,
-        }),
-      })
+      await rejectApprovalQueueItem(item.id, rejectionReason.trim())
 
-      const data = await res.json()
-      if (!res.ok) {
-        errorToast(data.error || 'Rejection failed')
-        return
-      }
-
-      successToast('Record rejected and returned to technician')
+      successToast('Record rejected and returned to nurse queue')
       onApproved()
       onClose()
-    } catch {
-      errorToast('Network error')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  async function handleRequestChanges() {
-    if (!changeRequest.trim()) {
-      errorToast('Please specify what changes are needed')
-      return
-    }
-
-    setSubmitting(true)
-    try {
-      const res = await api(
-        `/staff/doctor/approval-queue/${item.id}/request-changes/`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            requested_changes: changeRequest,
-          }),
-        }
-      )
-
-      const data = await res.json()
-      if (!res.ok) {
-        errorToast(data.error || 'Request failed')
-        return
-      }
-
-      successToast('Change request sent to technician')
-      onApproved()
-      onClose()
-    } catch {
-      errorToast('Network error')
+    } catch (error) {
+      errorToast(error?.data?.error || error?.message || 'Rejection failed')
     } finally {
       setSubmitting(false)
     }
@@ -330,31 +272,6 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
             </>
           )}
 
-          {step === 'request' && (
-            <>
-              <div className="p-4 bg-amber-50 border border-amber-100 rounded-xl">
-                <p className="font-semibold text-amber-900 mb-2">Request Changes</p>
-                <p className="text-sm text-amber-700">
-                  The technician will receive your requested changes without full rejection. They can
-                  make targeted updates and resubmit.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase mb-2">
-                  What Changes Are Needed? *
-                </label>
-                <textarea
-                  rows={5}
-                  value={changeRequest}
-                  onChange={e => setChangeRequest(e.target.value)}
-                  placeholder="Describe the specific changes or updates needed..."
-                  className="w-full px-4 py-2 border border-gray-200 rounded-xl outline-none
-                             focus:border-blue-400 focus:ring-1 focus:ring-blue-100 resize-none"
-                />
-              </div>
-            </>
-          )}
         </div>
 
         {/* Footer */}
@@ -366,12 +283,6 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
                 className="flex-1 py-2 px-4 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition-colors"
               >
                 Approve
-              </button>
-              <button
-                onClick={() => setStep('request')}
-                className="flex-1 py-2 px-4 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium transition-colors"
-              >
-                Request Changes
               </button>
               <button
                 onClick={() => setStep('reject')}
@@ -398,9 +309,7 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
                 onClick={
                   step === 'approve'
                     ? handleApprove
-                    : step === 'reject'
-                    ? handleReject
-                    : handleRequestChanges
+                    : handleReject
                 }
                 disabled={submitting}
                 className="flex-1 py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium transition-colors"
@@ -432,16 +341,16 @@ export default function ApprovalQueue() {
     setLoading(true)
     setError('')
     try {
-      const res = await api('/staff/doctor/approval-queue/')
-      const data = await res.json()
-
-    if (res.ok) {
-      setQueue(Array.isArray(data) ? data : [])
-    } else {
-      setError('Failed to load approval queue')
-    }
-    } catch {
-      setError('Network error')
+      const data = await getDoctorApprovalQueue()
+      if (Array.isArray(data)) {
+        setQueue(data)
+      } else {
+        setQueue([])
+        setError('Failed to load approval queue')
+      }
+    } catch (error) {
+      setQueue([])
+      setError(error?.data?.error || error?.message || 'Failed to load approval queue')
     } finally {
       setLoading(false)
     }

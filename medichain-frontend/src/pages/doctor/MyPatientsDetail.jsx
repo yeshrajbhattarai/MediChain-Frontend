@@ -4,13 +4,13 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getAccessToken } from '../../auth_store/authStore'
 import { getProfile } from '../../auth_store/profileStore'
+import { fetchWithAuth } from '../../api/client'
+import { requestCkdPrediction } from '../../api/doctor'
 
-const BASE = 'http://localhost:8000/api/v1'
-const api  = (url, opts = {}) => fetch(`${BASE}${url}`, {
+const api  = (url, opts = {}) => fetchWithAuth(`/api/v1${url}`, {
   ...opts,
-  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken()}`, ...opts.headers },
+  headers: { 'Content-Type': 'application/json', ...opts.headers },
 })
 
 // ── KFT reference ranges ──────────────────────────────────────────────────────
@@ -431,125 +431,86 @@ useEffect(() => {
 
 function ReportsTab({ patient, detail, toast$ }) {
   const navigate = useNavigate()
-  const [record, setRecord]         = useState(null)
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState('')
+  const [record, setRecord] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [predicting, setPredicting] = useState(false)
   const [prediction, setPrediction] = useState(null)
-  const doctor = getProfile()
 
-  // use records from detail API if available
   const patientRecords = detail?.records || []
 
-  async function loadRecord() {
-    if (!recordId.trim()) return
-    setLoading(true); setError(''); setRecord(null); setPrediction(null)
+  const openRecord = async (recordId) => {
+    setLoading(true)
+    setError('')
+    setPrediction(null)
+
     try {
-      const res = await api(`/staff/records/${recordId.trim()}/`)
-      if (!res.ok) { setError('Record not found or access denied.'); return }
+      const res = await api(`/staff/records/${recordId}/`)
+      if (!res.ok) {
+        setError('Record not found or access denied.')
+        return
+      }
       setRecord(await res.json())
-    } catch { setError('Network error.') }
-    finally { setLoading(false) }
+    } catch {
+      setError('Network error.')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  async function predict() {
-    if (!record) return
+  const predict = async () => {
+    if (!record?.record_id || !patient?.id) return
+
     setPredicting(true)
     try {
-      // !TODO: replace with real CKD prediction endpoint once ML module is wired
-      await new Promise(r => setTimeout(r, 1500))
-      const audit = record.audit || {}
-      // naive mock score until API is ready
-      const highCount = KFT_REFS.filter(r => getStatus(r, audit[r.key]) === 'high').length
-      setPrediction({
-        risk: highCount >= 3 ? 'High' : highCount >= 1 ? 'Moderate' : 'Low',
-        score: Math.min(95, highCount * 28 + Math.random() * 10),
-      })
-    } finally { setPredicting(false) }
+      const data = await requestCkdPrediction(patient.id, record.record_id)
+      setPrediction(data)
+    } catch (e) {
+      toast$(e?.data?.error || e?.message || 'Prediction failed', 'err')
+    } finally {
+      setPredicting(false)
+    }
   }
 
   return (
     <div className="space-y-5">
-            {/* Load record */}
-      <button onClick={() => navigate(`/doctor/patients/${patient.id}/create-record`)}
-          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors">
-          + Create Medical Record
-        </button>
-      {/* Existing Patient Records */}
+      <button
+        onClick={() => navigate(`/doctor/patients/${patient.id}/create-record`)}
+        className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-xl hover:bg-teal-700 transition-colors"
+      >
+        + Create Medical Record
+      </button>
+
       {patientRecords.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-gray-800">
-                Existing Medical Records
-              </h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Records already created for this patient
-              </p>
+              <h3 className="text-sm font-semibold text-gray-800">Existing Medical Records</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Records already created for this patient</p>
             </div>
-
             <span className="text-xs bg-teal-50 text-teal-700 ring-1 ring-teal-200 px-2.5 py-1 rounded-full font-medium">
               {patientRecords.length} record{patientRecords.length > 1 ? 's' : ''}
             </span>
           </div>
 
           <div className="space-y-3">
-            {patientRecords.map(r => (
-              <div
-                key={r.record_id}
-                className="border border-gray-100 rounded-xl p-4 hover:border-teal-200 transition-all"
-              >
+            {patientRecords.map((row) => (
+              <div key={row.record_id} className="border border-gray-100 rounded-xl p-4 hover:border-teal-200 transition-all">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold text-gray-800">
-                        {r.lab_name || r.record_type_display || 'Medical Record'}
+                        {row.lab_name || row.record_type_display || 'Medical Record'}
                       </p>
-
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                        v{r.version}
-                      </span>
+                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">v{row.version}</span>
                     </div>
-
-                    <div className="mt-2 space-y-1">
-                      <p className="text-xs text-gray-500">
-                        <span className="font-medium">Record ID:</span>{' '}
-                        <span className="font-mono">{r.record_id}</span>
-                      </p>
-
-                      <p className="text-xs text-gray-500">
-                        <span className="font-medium">Recorded By:</span>{' '}
-                        {r.recorded_by_name || '—'}
-                      </p>
-
-                      <p className="text-xs text-gray-500">
-                        <span className="font-medium">Created:</span>{' '}
-                        {r.created_at
-                          ? new Date(r.created_at).toLocaleString('en-IN')
-                          : '—'}
-                      </p>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      <span className="font-medium">Record ID:</span>{' '}
+                      <span className="font-mono">{row.record_id}</span>
+                    </p>
                   </div>
-
                   <button
-                    onClick={async () => {
-                      setLoading(true)
-                      setError('')
-
-                      try {
-                        const res = await api(`/staff/records/${r.record_id}/`)
-                        if (!res.ok) {
-                          setError('Record not found or access denied.')
-                          return
-                        }
-
-                        setRecord(await res.json())
-                      } catch {
-                        setError('Network error.')
-                      } finally {
-                        setLoading(false)
-                      }
-                    }}
+                    onClick={() => openRecord(row.record_id)}
                     className="shrink-0 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-lg transition-colors"
                   >
                     Open
@@ -561,154 +522,100 @@ function ReportsTab({ patient, detail, toast$ }) {
         </div>
       )}
 
-
-
-      {/* Empty state */}
       {!record && !error && (
         <div className="bg-white border border-gray-200 rounded-2xl py-16 text-center">
-          <p className="text-4xl mb-3">🔬</p>
+          <p className="text-4xl mb-3">Report</p>
           <p className="font-semibold text-gray-700">No report loaded</p>
-          <p className="text-sm text-gray-400 mt-1">Paste the Record UUID from the technician above to view lab results.</p>
+          <p className="text-sm text-gray-400 mt-1">Open any available record to inspect results.</p>
         </div>
       )}
 
-      {/* Record data */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">
+          {error}
+        </div>
+      )}
+
       {record && (() => {
-        const audit      = record.audit || {}
+        const audit = record.audit || {}
         const labRequest = record.lab_request || {}
-        const hasKFT     = KFT_REFS.some(r => audit[r.key] !== undefined)
+        const hasKFT = KFT_REFS.some((ref) => audit[ref.key] !== undefined)
+        const canPredict = hasKFT && (labRequest.lab_type || '').toLowerCase() === 'ckd'
+        const riskLevel = prediction?.risk_level || 'Unknown'
+        const confidence = Number(prediction?.confidence || 0)
 
         return (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {/* KFT values */}
             <div className="bg-white border border-gray-200 rounded-2xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-sm font-semibold text-gray-800">Lab Results</h3>
-                  <p className="text-xs text-gray-400">{labRequest.lab_name || 'Biochemistry Lab'} · v{record.version}</p>
+                  <p className="text-xs text-gray-400">{labRequest.lab_name || 'Lab'} - v{record.version}</p>
                 </div>
-                <span className="text-xs bg-teal-50 text-teal-700 ring-1 ring-teal-200 px-2 py-0.5 rounded-full font-medium">Verified ✓</span>
+                <span className="text-xs bg-teal-50 text-teal-700 ring-1 ring-teal-200 px-2 py-0.5 rounded-full font-medium">Verified</span>
               </div>
-
               <div className="space-y-3">
-                {KFT_REFS.map(ref => {
+                {KFT_REFS.map((ref) => {
                   const val = audit[ref.key]
-                  const st  = getStatus(ref, val)
-                  const s   = S[st]
-                  const pct = val !== undefined
-                    ? Math.min(100, Math.max(0, ((parseFloat(val) - ref.low * 0.7) / (ref.high * 1.3 - ref.low * 0.7)) * 100))
-                    : 0
-
+                  const st = getStatus(ref, val)
+                  const style = S[st]
                   return (
-                    <div key={ref.key} className="flex items-center gap-4 py-2 border-b border-gray-50 last:border-0">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-sm font-medium text-gray-800">{ref.label}</p>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-bold text-gray-900">
-                              {val !== undefined ? parseFloat(val).toFixed(ref.key.includes('glucose') ? 1 : 0) : '—'}
-                              <span className="text-xs font-normal text-gray-400 ml-1">{ref.unit}</span>
-                            </p>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.badge}`}>{s.label}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                            <div className={`h-1.5 rounded-full transition-all duration-500 ${s.bar}`}
-                              style={{ width: `${pct}%` }} />
-                          </div>
-                          <p className="text-xs text-gray-400 shrink-0">{ref.low}–{ref.high}</p>
-                        </div>
+                    <div key={ref.key} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                      <p className="text-sm font-medium text-gray-800">{ref.label}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-gray-900">
+                          {val !== undefined ? val : '-'} <span className="text-xs font-normal text-gray-400">{ref.unit}</span>
+                        </span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${style.badge}`}>{style.label}</span>
                       </div>
                     </div>
                   )
                 })}
-
-                {audit.ecg_result && (
-                  <div className="flex items-center justify-between py-2">
-                    <p className="text-sm font-medium text-gray-800">ECG Result</p>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full
-                      ${audit.ecg_result?.toLowerCase() === 'normal'
-                        ? 'bg-teal-50 text-teal-700 ring-1 ring-teal-200'
-                        : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'}`}>
-                      {audit.ecg_result}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
 
-            {/* Predict + Diagnosis */}
             <div className="flex flex-col gap-4">
-              {/* AI Predict card */}
-              {hasKFT && (
+              {canPredict && (
                 <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl p-5 text-white">
-                  <p className="text-sm font-semibold mb-0.5">🧠 CKD Risk Prediction</p>
-                  <p className="text-xs text-violet-200 mb-4">AI model analyses KFT values to estimate Chronic Kidney Disease risk</p>
-
+                  <p className="text-sm font-semibold mb-0.5">CKD Risk Prediction</p>
+                  <p className="text-xs text-violet-200 mb-4">Runs against the backend ML endpoint.</p>
                   {!prediction ? (
-                    <button onClick={predict} disabled={predicting}
-                      className="w-full py-3 bg-white/20 hover:bg-white/30 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-all backdrop-blur-sm flex items-center justify-center gap-2">
-                      {predicting
-                        ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Analysing…</>
-                        : '▶ Run Prediction'}
+                    <button
+                      onClick={predict}
+                      disabled={predicting}
+                      className="w-full py-3 bg-white/20 hover:bg-white/30 disabled:opacity-60 text-white text-sm font-semibold rounded-xl transition-all"
+                    >
+                      {predicting ? 'Analysing...' : 'Run Prediction'}
                     </button>
                   ) : (
-                    <div className="bg-white/15 rounded-xl p-4 space-y-3 backdrop-blur-sm">
+                    <div className="bg-white/15 rounded-xl p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-violet-100">CKD Risk Level</p>
-                        <span className={`text-sm font-bold px-3 py-1 rounded-full
-                          ${prediction.risk === 'High'     ? 'bg-rose-100 text-rose-700'
-                          : prediction.risk === 'Moderate' ? 'bg-amber-100 text-amber-700'
-                          :                                  'bg-teal-100 text-teal-700'}`}>
-                          {prediction.risk}
-                        </span>
+                        <p className="text-sm font-medium text-violet-100">{prediction?.prediction || 'Prediction'}</p>
+                        <span className="text-sm font-bold px-3 py-1 rounded-full bg-white text-indigo-700">{riskLevel}</span>
                       </div>
-                      <div>
-                        <div className="flex justify-between text-xs text-violet-200 mb-1.5">
-                          <span>Risk Score</span>
-                          <span>{prediction.score.toFixed(1)}%</span>
-                        </div>
-                        <div className="bg-white/20 rounded-full h-2">
-                          <div className={`h-2 rounded-full transition-all duration-700
-                            ${prediction.risk === 'High' ? 'bg-rose-400' : prediction.risk === 'Moderate' ? 'bg-amber-400' : 'bg-teal-400'}`}
-                            style={{ width: `${prediction.score}%` }} />
-                        </div>
-                      </div>
-                      <p className="text-xs text-violet-200">
-                        {/* !TODO: replace mock with real ML endpoint output */}
-                        ⚠️ This is a preview result. Full ML model coming soon.
-                      </p>
-                      <button onClick={() => setPrediction(null)}
-                        className="text-xs text-violet-200 hover:text-white underline">Re-run</button>
+                      <p className="text-xs text-violet-100">Confidence: {confidence.toFixed(1)}%</p>
+                      {prediction?.suggested_action && (
+                        <p className="text-xs text-violet-100">{prediction.suggested_action}</p>
+                      )}
+                      {Array.isArray(prediction?.imputed_fields) && prediction.imputed_fields.length > 0 && (
+                        <p className="text-xs text-violet-200">Imputed fields: {prediction.imputed_fields.join(', ')}</p>
+                      )}
+                      <button onClick={() => setPrediction(null)} className="text-xs text-violet-200 hover:text-white underline">Re-run</button>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Doctor's diagnosis summary */}
-              {labRequest.diagnosis && (
-                <div className="bg-white border border-gray-200 rounded-2xl p-5">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Your Diagnosis on File</p>
-                  <p className="text-sm text-gray-700 leading-relaxed">{labRequest.diagnosis}</p>
-                  {labRequest.treatment_plan && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Treatment Plan</p>
-                      <p className="text-sm text-gray-700 leading-relaxed">{labRequest.treatment_plan}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Download */}
               <button
                 onClick={() => {
                   const w = window.open('', '_blank')
-                  w.document.write(`<html><body><h2>${patient?.full_name} · Lab Report</h2><pre>${JSON.stringify(audit, null, 2)}</pre></body></html>`)
-                  w.document.close(); setTimeout(() => w.print(), 300)
+                  w.document.write(`<html><body><h2>${patient?.full_name} - Lab Report</h2><pre>${JSON.stringify(audit, null, 2)}</pre></body></html>`)
+                  w.document.close()
+                  setTimeout(() => w.print(), 300)
                 }}
-                className="w-full py-3 bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium rounded-xl transition-colors">
-                📥 Print Lab Report
+                className="w-full py-3 bg-gray-900 hover:bg-gray-700 text-white text-sm font-medium rounded-xl transition-colors"
+              >
+                Print Lab Report
               </button>
             </div>
           </div>
@@ -717,9 +624,6 @@ function ReportsTab({ patient, detail, toast$ }) {
     </div>
   )
 }
-
-// ── Main Detail Page ──────────────────────────────────────────────────────────
-
 const TABS = [
   { label: 'Overview',     icon: '👤' },
   { label: 'Send to Lab',  icon: '🔬' },

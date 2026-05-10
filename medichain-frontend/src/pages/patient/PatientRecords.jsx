@@ -5,11 +5,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getAccessToken } from '../../auth_store/authStore'
-
-const BASE = 'http://localhost:8000/api/v1'
-const authFetch = (url) =>
-  fetch(`${BASE}${url}`, { headers: { Authorization: `Bearer ${getAccessToken()}` } })
+import { getPatientRecordDetail, getPatientRecordHistory, getPatientRecords } from '../../api/patient'
 
 function Spinner() {
   return (
@@ -33,8 +29,7 @@ export function PatientRecords() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    authFetch('/patient/records/')
-      .then(r => r.json())
+    getPatientRecords()
       .then(d => setData(d))
       .catch(() => setError('Failed to load records.'))
       .finally(() => setLoading(false))
@@ -123,8 +118,7 @@ export function PatientRecordDetail() {
   const [histLoading, setHistLoading] = useState(false)
 
   useEffect(() => {
-    authFetch(`/patient/records/${record_id}/`)
-      .then(r => r.json())
+    getPatientRecordDetail(record_id)
       .then(d => {
         if (d.success === false) setError(d.error || 'Record not found.')
         else setData(d)
@@ -137,8 +131,7 @@ export function PatientRecordDetail() {
     if (history) return
     setHistLoading(true)
     try {
-      const res  = await authFetch(`/patient/records/${record_id}/history/`)
-      const data = await res.json()
+      const data = await getPatientRecordHistory(record_id)
       setHistory(data.history || [])
     } catch { setHistory([]) }
     finally { setHistLoading(false) }

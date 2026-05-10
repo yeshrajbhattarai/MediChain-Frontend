@@ -4,18 +4,7 @@
 // PATCH /api/v1/patient/profile/update-password/
 
 import { useEffect, useState } from 'react'
-import { getAccessToken } from '../../auth_store/authStore'
-
-const BASE = 'http://localhost:8000/api/v1'
-const authFetch = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAccessToken()}`,
-      ...opts.headers,
-    },
-  })
+import { getPatientProfile, updatePatientPassword, updatePatientProfile } from '../../api/patient'
 
 function Spinner() {
   return (
@@ -37,8 +26,7 @@ export default function PatientProfile() {
   const [tab, setTab]             = useState('info') // 'info' | 'password'
 
   useEffect(() => {
-    authFetch('/patient/profile/')
-      .then(r => r.json())
+    getPatientProfile()
       .then(d => {
         setProfile(d)
         const p = d.patient || {}
@@ -61,40 +49,39 @@ export default function PatientProfile() {
   async function handleSave() {
     setSaving(true); setMsg({ type: '', text: '' })
     try {
-      const res  = await authFetch('/patient/profile/', {
-        method: 'PATCH',
-        body: JSON.stringify(form),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setMsg({ type: 'success', text: 'Profile updated successfully.' })
-        // refresh
-        const refresh = await authFetch('/patient/profile/').then(r => r.json())
-        setProfile(refresh)
-      } else {
-        const errs = data.errors || {}
+      const data = await updatePatientProfile(form)
+      if (data?.success === false) {
+        const errs = data?.errors || {}
         const first = Object.values(errs)[0]
-        setMsg({ type: 'error', text: Array.isArray(first) ? first[0] : first || 'Update failed.' })
+        setMsg({ type: 'error', text: Array.isArray(first) ? first[0] : first || data?.error || 'Update failed.' })
+        return
       }
-    } catch { setMsg({ type: 'error', text: 'Network error.' }) }
+
+      setMsg({ type: 'success', text: 'Profile updated successfully.' })
+      const refresh = await getPatientProfile()
+      setProfile(refresh)
+    } catch (error) {
+      const errs = error?.data?.errors || {}
+      const first = Object.values(errs)[0]
+      setMsg({ type: 'error', text: Array.isArray(first) ? first[0] : first || error?.data?.error || 'Network error.' })
+    }
     finally { setSaving(false) }
   }
 
   async function handlePasswordSave() {
     setPwSaving(true); setPwMsg({ type: '', text: '' })
     try {
-      const res  = await authFetch('/patient/profile/update-password/', {
-        method: 'PATCH',
-        body: JSON.stringify(pwForm),
-      })
-      const data = await res.json()
-      if (data.success) {
-        setPwMsg({ type: 'success', text: 'Password updated successfully.' })
-        setPwForm({ current_password: '', new_password: '', confirm_new_password: '' })
-      } else {
-        setPwMsg({ type: 'error', text: data.error || 'Failed to update password.' })
+      const data = await updatePatientPassword(pwForm)
+      if (data?.success === false) {
+        setPwMsg({ type: 'error', text: data?.error || 'Failed to update password.' })
+        return
       }
-    } catch { setPwMsg({ type: 'error', text: 'Network error.' }) }
+
+      setPwMsg({ type: 'success', text: data?.message || 'Password updated successfully.' })
+      setPwForm({ current_password: '', new_password: '', confirm_new_password: '' })
+    } catch (error) {
+      setPwMsg({ type: 'error', text: error?.data?.error || 'Network error.' })
+    }
     finally { setPwSaving(false) }
   }
 

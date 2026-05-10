@@ -1,7 +1,7 @@
   import { useEffect, useState } from 'react'
   import { Link } from 'react-router-dom'
-  import { getAccessToken } from '../../auth_store/authStore'
   import Spinner from '../../components/ui/Spinner'
+  import { getHospitalDashboard } from '../../api/hospital'
   import {
     Stethoscope, HeartPulse, FlaskConical, Users,
     Building2, FileText, BarChart3, ClipboardPlus,
@@ -38,10 +38,7 @@
     const [error, setError]     = useState('')
 
     useEffect(() => {
-      fetch('http://localhost:8000/api/v1/dashboard/', {
-        headers: { Authorization: `Bearer ${getAccessToken()}` }
-      })
-        .then(r => r.json())
+      getHospitalDashboard()
         .then(d => setData(d))
         .catch(() => setError('Failed to load dashboard'))
         .finally(() => setLoading(false))

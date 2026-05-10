@@ -6,16 +6,13 @@
 //   POST /api/v1/staff/technicians/<uuid>/  — toggle active / inactive
 
 import { useState, useEffect, useRef } from 'react'
-import { getAccessToken } from '../../auth_store/authStore'
-
-const BASE = 'http://127.0.0.1:8000/api/v1'
+import { fetchWithAuth } from '../../api/client'
 
 const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
+  fetchWithAuth(`/api/v1${url}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAccessToken()}`,
       ...opts.headers,
     },
   })

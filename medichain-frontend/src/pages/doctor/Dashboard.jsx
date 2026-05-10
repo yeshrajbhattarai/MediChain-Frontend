@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getAccessToken, getPayload } from '../../auth_store/authStore'
 import { getProfile } from '../../auth_store/profileStore'
 import Spinner from '../../components/ui/Spinner'
 import { Users, FileText, BarChart3, Stethoscope, SendHorizonal, Inbox, Settings } from 'lucide-react'
+import { getDoctorDashboard } from '../../api/doctor'
 
 const COLOR = {
   blue:  { bg: 'bg-blue-50',   text: 'text-blue-700',   icon: 'bg-blue-100 text-blue-600'   },
@@ -30,13 +30,9 @@ export default function DoctorDashboard() {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
-  const payload = getPayload()
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/staff/doctor/dashboard/', {
-      headers: { Authorization: `Bearer ${getAccessToken()}` }  
-    })
-      .then(r => r.json())
+    getDoctorDashboard()
       .then(d => setData(d))
       .catch(() => setError('Failed to load dashboard'))
       .finally(() => setLoading(false))

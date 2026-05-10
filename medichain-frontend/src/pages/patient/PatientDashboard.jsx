@@ -11,8 +11,7 @@ import {
 
 import { getPayload } from '../../auth_store/authStore'
 import { errorToast } from '../../utils/alert'
-
-const BASE = 'http://localhost:8000/api/v1'
+import { getPatientDashboard } from '../../api/patient'
 
 export default function PatientDashboard() {
   const [loading, setLoading] = useState(true)
@@ -26,23 +25,7 @@ export default function PatientDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const token = localStorage.getItem('access')
-
-      const response = await fetch(
-        `${BASE}/patient/dashboard/`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data?.error || 'Failed to load dashboard')
-      }
-
+      const data = await getPatientDashboard()
       setDashboard(data)
     } catch (err) {
       errorToast(err.message)

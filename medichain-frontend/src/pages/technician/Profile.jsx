@@ -4,15 +4,13 @@
 // PATCH /api/v1/staff/technician/profile/update-password/
 
 import { useState, useEffect } from 'react'
-
-const BASE = 'http://localhost:8000/api'
+import { fetchWithAuth } from '../../api/client'
 
 const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
+  fetchWithAuth(`/api${url}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('access') || ''}`,
       ...opts.headers,
     },
   })

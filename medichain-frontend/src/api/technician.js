@@ -1,49 +1,35 @@
-import { getAccessToken } from '../auth_store/authStore'
-
-const BASE = 'http://localhost:8000/api/v1'
-
-const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAccessToken() || ''}`,
-      ...opts.headers,
-    },
-  })
-
-// ── Dashboard ─────────────────────────────
+import { get, patch, post } from './client'
 
 export const getTechnicianDashboard = () =>
-  api('/staff/technician/dashboard/').then(r => r.json())
+  get('/api/v1/staff/technician/dashboard/')
 
-// ── Lab Queue ─────────────────────────────
+export const getTechnicianProfile = () =>
+  get('/api/v1/staff/technician/profile/')
+
+export const updateTechnicianProfile = (body) =>
+  patch('/api/v1/staff/technician/profile/update-personal/', body)
+
+export const updateTechnicianPassword = (body) =>
+  patch('/api/v1/staff/technician/profile/update-password/', body)
+
+export const getTechnicianPatients = () =>
+  get('/api/v1/staff/technician/patients/')
+
+export const getTechnicianPatientDetail = (patientId) =>
+  get(`/api/v1/staff/technician/patients/${patientId}/`)
 
 export const getTechnicianLabQueue = () =>
-  api('/staff/technician/lab-queue/').then(r => r.json())
-
-// ── Lab Request Detail ────────────────────
+  get('/api/v1/staff/technician/lab-queue/')
 
 export const getLabRequestDetail = (requestId) =>
-  api(`/staff/technician/lab-requests/${requestId}/`).then(r => r.json())
-
-// ── Create Record ─────────────────────────
+  get(`/api/v1/staff/technician/lab-requests/${requestId}/`)
 
 export const createTechnicianRecord = (body) =>
-  api('/staff/technician/records/create/', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  }).then(r => r.json())
-
-// ── Records ───────────────────────────────
+  post('/api/v1/staff/technician/records/create/', body)
 
 export const getTechnicianRecords = () =>
-  api('/staff/technician/records/').then(r => r.json())
-
-// ── Edit Record ───────────────────────────
+  get('/api/v1/staff/technician/records/')
 
 export const editTechnicianRecord = (recordId, body) =>
-  api(`/staff/technician/records/${recordId}/edit/`, {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  }).then(r => r.json())
+  patch(`/api/v1/staff/technician/records/${recordId}/edit/`, body)
+

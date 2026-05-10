@@ -2,15 +2,13 @@
 // Technician lab queue — card list → detail modal (step 1) → fill report (step 2, slides in)
 
 import { useState, useEffect, useRef } from 'react'
-
-const BASE = 'http://localhost:8000/api'
+import { fetchWithAuth } from '../../api/client'
 
 const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
+  fetchWithAuth(`/api${url}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('access') || ''}`,
       ...opts.headers,
     },
   })

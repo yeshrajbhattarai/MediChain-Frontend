@@ -6,18 +6,14 @@
 //   GET /api/v1/staff/doctor/labs/            — list all labs
 //   GET /api/v1/staff/doctor/labs/<lab_id>/   — single lab detail
 //
-//! TODO: hook up real lab_id once Samarpan confirms UUID vs int PK
-
 import { useState, useEffect } from 'react'
-
-const BASE = 'http://127.0.0.1:8000/api'
+import { fetchWithAuth } from '../../api/client'
 
 const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
+  fetchWithAuth(`/api${url}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('access') || ''}`,
       ...opts.headers,
     },
   })

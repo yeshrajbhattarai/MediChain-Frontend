@@ -4,26 +4,22 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getAccessToken } from '../../auth_store/authStore'
-
-const BASE = 'http://localhost:8000/api/v1'
+import { fetchWithAuth } from '../../api/client'
 
 // JSON fetch helper
 const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
+  fetchWithAuth(`/api/v1${url}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAccessToken()}`,
       ...opts.headers,
     },
   })
 
 // Multipart fetch helper — used for file upload (no Content-Type, browser sets boundary)
 const apiForm = (url, formData) =>
-  fetch(`${BASE}${url}`, {
+  fetchWithAuth(`/api/v1${url}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${getAccessToken()}` },
     body: formData,
   })
 
@@ -91,7 +87,7 @@ export default function CreateMedicalRecord() {
       fd.append('handwritten_file',   file)
       fd.append('patient_id',         id)
 
-      // !TODO: confirm exact endpoint with Samarpan — service_create_nurse_queue_item
+      // Endpoint confirmed in reference API: create nurse queue item with multipart payload.
       const res  = await apiForm(`/staff/doctor/patients/${id}/create-medical-record/`, fd)
       const data = await res.json()
 

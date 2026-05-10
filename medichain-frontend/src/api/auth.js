@@ -1,43 +1,37 @@
-const BASE = 'http://localhost:8000/api/v1'
+import { post } from './client'
 
-// ── helpers ──────────────────────────────────────────────────────────────────
-const post = async (url, body) => {
-  const res = await fetch(`${BASE}${url}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  const data = await res.json()
-  if (!res.ok) throw data   // caller catches { errors: {...} }
-  return data
-}
-
-// ── auth calls ───────────────────────────────────────────────────────────────
-
-// POST /register/ = { success, hospital_id }
+// POST /api/v1/register/
 export const registerHospital = (form) =>
-  post('/register/', {
-    hospital_name:    form.hospital_name,
-    email:            form.email,
-    contact_number:   form.contact_number,
-    password:         form.password,
-    confirm_password: form.confirm_password,
-  })
+  post(
+    '/api/v1/register/',
+    {
+      hospital_name: form.hospital_name,
+      email: form.email,
+      contact_number: form.contact_number,
+      password: form.password,
+      confirm_password: form.confirm_password,
+    },
+    { auth: false }
+  )
 
-// POST /verify-otp/ ={ success, message }
+// POST /api/v1/verify-otp/
 export const verifyOTP = (hospital_id, otp) =>
-  post('/verify-otp/', { hospital_id, otp })
+  post('/api/v1/verify-otp/', { hospital_id, otp }, { auth: false })
 
-// POST /resend-otp/ = { success, message }
+// POST /api/v1/resend-otp/
 export const resendOTP = (hospital_id) =>
-  post('/resend-otp/', { hospital_id })
+  post('/api/v1/resend-otp/', { hospital_id }, { auth: false })
 
-// POST /login/ = { success, role, tokens, hospital | staff }
+// POST /api/v1/login/
 export const login = (email, password) =>
-  post('/login/', { email, password })
+  post('/api/v1/login/', { email, password }, { auth: false })
 
-// POST /logout/ = blacklists refresh token
+// POST /api/v1/patient/login/
+export const patientLogin = (email, password) =>
+  post('/api/v1/patient/login/', { email, password }, { auth: false })
+
+// POST /api/v1/logout/
 export const logout = () => {
   const refresh = localStorage.getItem('refresh')
-  return post('/logout/', { refresh })
+  return post('/api/v1/logout/', { refresh })
 }

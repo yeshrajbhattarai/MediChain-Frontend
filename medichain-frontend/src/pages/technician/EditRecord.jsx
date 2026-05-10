@@ -3,15 +3,13 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-
-const BASE = 'http://localhost:8000/api'
+import { fetchWithAuth } from '../../api/client'
 
 const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
+  fetchWithAuth(`/api${url}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('access') || ''}`,
       ...opts.headers,
     },
   })

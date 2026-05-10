@@ -4,12 +4,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getAccessToken } from '../../auth_store/authStore'
+import { fetchWithAuth } from '../../api/client'
 
-const BASE = 'http://localhost:8000/api/v1'
-const api  = (url, opts = {}) => fetch(`${BASE}${url}`, {
+const api  = (url, opts = {}) => fetchWithAuth(`/api/v1${url}`, {
   ...opts,
-  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken()}`, ...opts.headers },
+  headers: { 'Content-Type': 'application/json', ...opts.headers },
 })
 
 // ── tiny helpers ──────────────────────────────────────────────────────────────

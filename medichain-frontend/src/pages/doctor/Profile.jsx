@@ -11,16 +11,13 @@ import {
   MapPin, FileText, Lock, Pencil, Check,
   X, Eye, EyeOff, AlertCircle, CheckCircle2
 } from 'lucide-react'
-import { getAccessToken } from '../../auth_store/authStore'
-
-const BASE = 'http://localhost:8000/api/v1'
+import { fetchWithAuth } from '../../api/client'
 
 const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
+  fetchWithAuth(`/api/v1${url}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAccessToken()}`,
       ...opts.headers,
     },
   })

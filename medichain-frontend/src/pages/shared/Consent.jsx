@@ -12,15 +12,13 @@
 //   GET    /api/consent/patients/search/?phone=   — find patient by phone for picker
 
 import { useState, useEffect, useCallback } from 'react'
-
-const BASE = 'http://127.0.0.1:8000/api'
+import { fetchWithAuth } from '../../api/client'
 
 const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
+  fetchWithAuth(`/api${url}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('access') || ''}`,
       ...opts.headers,
     },
   })

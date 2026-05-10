@@ -66,38 +66,40 @@ export default function PatientConsent() {
           ?.toLowerCase()
           .includes(query)
 
+      const status = normalizeStatus(consent?.request_status || consent?.status)
       const matchesFilter =
         filter === 'all'
           ? true
-          : consent?.status === filter
+          : status === filter
 
       return matchesSearch && matchesFilter
     })
   }, [consents, search, filter])
 
   const pendingCount = consents.filter(
-    c => c.status === 'pending'
+    c => normalizeStatus(c.request_status || c.status) === 'PENDING'
   ).length
 
   const approvedCount = consents.filter(
-    c => c.status === 'approved'
+    c => normalizeStatus(c.request_status || c.status) === 'APPROVED'
   ).length
 
   const rejectedCount = consents.filter(
-    c => c.status === 'rejected'
+    c => normalizeStatus(c.request_status || c.status) === 'REJECTED'
   ).length
 
   const handleDecision = async (
     consentId,
     choice
   ) => {
+    const normalizedChoice = normalizeStatus(choice)
     const confirmed = await confirmDialog(
-      `${choice === 'approved' ? 'Approve' : 'Reject'} Request`,
-      `Are you sure you want to ${choice} this consent request?`,
-      choice === 'approved'
+      `${normalizedChoice === 'APPROVED' ? 'Approve' : 'Reject'} Request`,
+      `Are you sure you want to ${normalizedChoice.toLowerCase()} this consent request?`,
+      normalizedChoice === 'APPROVED'
         ? 'Approve'
         : 'Reject',
-      choice !== 'approved'
+      normalizedChoice !== 'APPROVED'
     )
 
     if (!confirmed) return
@@ -105,11 +107,11 @@ export default function PatientConsent() {
     try {
       await submitPatientDecision(
         consentId,
-        choice
+        normalizedChoice
       )
 
       successToast(
-        `Consent ${choice} successfully`
+        `Consent ${normalizedChoice.toLowerCase()} successfully`
       )
 
       fetchConsents()
@@ -118,17 +120,17 @@ export default function PatientConsent() {
     } catch (err) {
       errorToast(
         err?.error ||
-          `Failed to ${choice} consent`
+          `Failed to ${normalizedChoice.toLowerCase()} consent`
       )
     }
   }
 
   const getStatusStyle = (status) => {
-    switch (status) {
-      case 'approved':
+    switch (normalizeStatus(status)) {
+      case 'APPROVED':
         return 'bg-emerald-50 text-emerald-700'
 
-      case 'rejected':
+      case 'REJECTED':
         return 'bg-red-50 text-red-600'
 
       default:
@@ -225,9 +227,9 @@ export default function PatientConsent() {
           ">
             {[
               'all',
-              'pending',
-              'approved',
-              'rejected',
+              'PENDING',
+              'APPROVED',
+              'REJECTED',
             ].map(item => (
               <button
                 key={item}
@@ -245,7 +247,7 @@ export default function PatientConsent() {
                 `}
               >
                 {item.charAt(0).toUpperCase() +
-                  item.slice(1)}
+                  item.slice(1).toLowerCase()}
               </button>
             ))}
           </div>
@@ -311,11 +313,11 @@ export default function PatientConsent() {
                           rounded-full
                           text-xs font-semibold
                           ${getStatusStyle(
-                            consent?.status
+                            consent?.request_status || consent?.status
                           )}
                         `}
                       >
-                        {consent?.status}
+                        {normalizeStatus(consent?.request_status || consent?.status)}
                       </div>
                     </div>
 
@@ -471,8 +473,8 @@ export default function PatientConsent() {
             </div>
 
             {/* ACTIONS */}
-            {selectedConsent?.status ===
-              'pending' && (
+            {normalizeStatus(selectedConsent?.request_status || selectedConsent?.status) ===
+              'PENDING' && (
               <div className="
                 px-8 py-6
                 border-t border-gray-100
@@ -482,7 +484,7 @@ export default function PatientConsent() {
                   onClick={() =>
                     handleDecision(
                       selectedConsent.id,
-                      'rejected'
+                      'REJECTED'
                     )
                   }
                   className="
@@ -502,7 +504,7 @@ export default function PatientConsent() {
                   onClick={() =>
                     handleDecision(
                       selectedConsent.id,
-                      'approved'
+                      'APPROVED'
                     )
                   }
                   className="
@@ -585,3 +587,5 @@ function Info({ label, value }) {
     </div>
   )
 }
+  const normalizeStatus = (status) =>
+    String(status || '').toUpperCase()

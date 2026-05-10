@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getAccessToken, getPayload } from '../../auth_store/authStore'
+import { getPayload } from '../../auth_store/authStore'
 import StatCard from '../../components/ui/StatCard'
 import Spinner from '../../components/ui/Spinner'
-
-const BASE = 'http://localhost:8000/api/v1'
+import { getTechnicianDashboard } from '../../api/technician'
 
 export default function TechnicianDashboard() {
   const [data, setData]       = useState(null)
@@ -13,10 +12,7 @@ export default function TechnicianDashboard() {
   const payload = getPayload()
 
   useEffect(() => {
-    fetch(`${BASE}/staff/technician/dashboard/`, {
-      headers: { Authorization: `Bearer ${getAccessToken()}` }
-    })
-      .then(r => r.json())
+    getTechnicianDashboard()
       .then(d => setData(d))
       .catch(() => setError('Failed to load dashboard'))
       .finally(() => setLoading(false))

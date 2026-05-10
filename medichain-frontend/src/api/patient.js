@@ -1,69 +1,36 @@
-// src/api/patient.js
-// Centralized patient portal API service
+import { get, patch, post } from './client'
 
-import { getAccessToken } from '../auth_store/authStore'
-
-const BASE = 'http://localhost:8000/api/v1'
-
-const api = (url, opts = {}) =>
-  fetch(`${BASE}${url}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAccessToken() || ''}`,
-      ...opts.headers,
-    },
-  })
-
-// ── Dashboard ─────────────────────────────────────────────────────────────────
-
-// GET /patient/dashboard/
 export const getPatientDashboard = () =>
-  api('/patient/dashboard/').then(r => r.json())
+  get('/api/v1/patient/dashboard/')
 
-// ── Profile ───────────────────────────────────────────────────────────────────
-
-// GET /patient/profile/
 export const getPatientProfile = () =>
-  api('/patient/profile/').then(r => r.json())
+  get('/api/v1/patient/profile/')
 
-// PATCH /patient/profile/ — update personal info
+export const completePatientProfile = (body) =>
+  post('/api/v1/patient/complete-profile/', body)
+
 export const updatePatientProfile = (body) =>
-  api('/patient/profile/', {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  })
+  patch('/api/v1/patient/profile/', body)
 
-// PATCH /patient/profile/update-password/
 export const updatePatientPassword = (body) =>
-  api('/patient/profile/update-password/', {
-    method: 'PATCH',
-    body: JSON.stringify(body),
-  })
+  patch('/api/v1/patient/profile/update-password/', body)
 
-// ── Records ───────────────────────────────────────────────────────────────────
-
-// GET /patient/records/
 export const getPatientRecords = () =>
-  api('/patient/records/').then(r => r.json())
+  get('/api/v1/patient/records/')
 
-// GET /patient/records/<id>/
-export const getPatientRecord = (recordId) =>
-  api(`/patient/records/${recordId}/`).then(r => r.json())
+export const getPatientRecord = (recordId, version = null) => {
+  const query = version ? `?v=${encodeURIComponent(version)}` : ''
+  return get(`/api/v1/patient/records/${recordId}/${query}`)
+}
 
-// GET /patient/records/<id>/history/
+export const getPatientRecordDetail = (recordId, version = null) =>
+  getPatientRecord(recordId, version)
+
 export const getPatientRecordHistory = (recordId) =>
-  api(`/patient/records/${recordId}/history/`).then(r => r.json())
+  get(`/api/v1/patient/records/${recordId}/history/`)
 
-// ── Consents ──────────────────────────────────────────────────────────────────
-
-// GET /patient/consents/ — all consent requests for this patient
 export const getPatientConsents = () =>
-  api('/patient/consents/').then(r => r.json())
+  get('/api/consent/patient/consents/')
 
-// PATCH /consent/<id>/patient-decision/ — patient approves or rejects
 export const submitPatientDecision = (consentId, patient_choice) =>
-  api(`/consent/${consentId}/patient-decision/`, {
-    method: 'PATCH',
-    body: JSON.stringify({ patient_choice }),
-  })
+  patch(`/api/consent/${consentId}/patient-decision/`, { patient_choice })

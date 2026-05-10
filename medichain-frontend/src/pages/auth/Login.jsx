@@ -3,12 +3,10 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import Input from '../../components/ui/Input'
-import { login } from '../../api/auth'
+import { login, patientLogin } from '../../api/auth'
 import { saveTokens, getDashboardRoute } from '../../auth_store/authStore'
 import { fetchAndSaveProfile } from '../../auth_store/profileStore'
 import { successToast, errorToast } from '../../utils/alert'
-
-const BASE = 'http://localhost:8000/api/v1'
 
 const FEATURE_CARDS = [
   { src: 'https://cdn.lordicon.com/xovdoewm.json', label: 'Secure transfer' },
@@ -42,13 +40,7 @@ export default function Login() {
     try {
       let data
       if (isPatient) {
-        const res = await fetch(`${BASE}/patient/login/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: form.email, password: form.password }),
-        })
-        data = await res.json()
-        if (!res.ok) throw { errors: data.errors || {} }
+        data = await patientLogin(form.email, form.password)
         saveTokens(data.tokens.access, data.tokens.refresh)
       } else {
         data = await login(form.email, form.password)
@@ -58,12 +50,12 @@ export default function Login() {
       successToast('Welcome back!')
       navigate(getDashboardRoute())
     } catch (err) {
-      const e = err?.errors || {}
+      const e = err?.data?.errors || err?.errors || {}
       const msg =
         extractError(e.non_field_errors) ||
         extractError(e.email)            ||
         extractError(e.password)         ||
-        extractError(err?.detail)        ||
+        extractError(err?.data?.detail || err?.detail) ||
         'Invalid credentials. Please try again.'
       setError(msg)
       errorToast(msg)

@@ -6,16 +6,16 @@
 
 import { getAccessToken, getUserType, getStaffRole } from './authStore'
 
-const BASE = 'http://localhost:8000/api/v1'
+const API_ORIGIN = (import.meta.env.VITE_API_ORIGIN || 'http://localhost:8000').replace(/\/$/, '')
 const KEY  = 'medichain_profile'   // localStorage key
 
 // ── Which API endpoint to call based on role ──────────────────────────────────
 function getProfileEndpoint() {
   const type = getUserType()
-  if (type === 'hospital_admin') return '/profile/'
+  if (type === 'hospital_admin') return '/api/v1/profile/'
   const role = getStaffRole()
-  if (role === 'doctor')     return '/staff/doctor/profile/'
-  if (role === 'technician') return '/staff/technician/profile/'
+  if (role === 'doctor')     return '/api/v1/staff/doctor/profile/'
+  if (role === 'technician') return '/api/v1/staff/technician/profile/'
   return null
 }
 
@@ -55,7 +55,7 @@ export async function fetchAndSaveProfile() {
   if (!endpoint) return null   // unknown role — skip
 
   try {
-    const res = await fetch(`${BASE}${endpoint}`, {
+    const res = await fetch(`${API_ORIGIN}${endpoint}`, {
       headers: { Authorization: `Bearer ${getAccessToken()}` }
     })
 
