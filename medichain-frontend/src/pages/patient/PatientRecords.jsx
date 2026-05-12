@@ -1,283 +1,323 @@
-// src/pages/patient/Records.jsx
-// GET /api/v1/patient/records/
-// GET /api/v1/patient/records/<id>/
-// GET /api/v1/patient/records/<id>/history/
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Activity,
+  FileText,
+  FlaskConical,
+  Calendar,
+  Hospital,
+  ChevronRight,
+  Search,
+  Filter,
+  AlertCircle,
+} from "lucide-react";
 
-import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { getPatientRecordDetail, getPatientRecordHistory, getPatientRecords } from '../../api/patient'
+import { getPatientRecords } from "../../api/patient";
 
-function Spinner() {
-  return (
-    <div className="flex items-center justify-center py-20">
-      <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
-}
+export default function PatientRecordsPage() {
+  const navigate = useNavigate();
 
-const STATUS_COLOR = {
-  pending:   'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  completed: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  rejected:  'bg-red-50 text-red-600 ring-1 ring-red-200',
-}
-
-// ─── Records List ─────────────────────────────────────────────────────────────
-export function PatientRecords() {
-  const [data, setData]       = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState('')
-  const navigate = useNavigate()
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [records, setRecords] = useState([]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
-    getPatientRecords()
-      .then(d => setData(d))
-      .catch(() => setError('Failed to load records.'))
-      .finally(() => setLoading(false))
-  }, [])
+    fetchRecords();
+  }, []);
 
-  if (loading) return <Spinner />
-  if (error)   return <p className="text-red-500 text-sm">{error}</p>
-
-  const groups = data?.records_by_hospital || []
-
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">My Records</h1>
-        <p className="text-sm text-gray-400 mt-0.5">All your lab requests across hospitals.</p>
-      </div>
-
-      {groups.length === 0 ? (
-        <div className="text-center py-20 text-gray-400">
-          <p className="text-4xl mb-3">📋</p>
-          <p className="font-medium text-gray-600">No records yet.</p>
-        </div>
-      ) : groups.map(group => (
-        <div key={group.hospital_id} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 bg-gray-50">
-            <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center">🏥</div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">{group.hospital_name}</p>
-              <p className="text-xs text-gray-400">{group.total_requests} request{group.total_requests !== 1 ? 's' : ''}</p>
-            </div>
-          </div>
-
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100">
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Lab</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide hidden md:table-cell">Doctor</th>
-                <th className="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
-                <th className="text-right px-5 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {(group.requests || []).map(req => (
-                <tr key={req.id} className="hover:bg-teal-50/30 transition-colors">
-                  <td className="px-5 py-3.5">
-                    <p className="font-medium text-gray-900">{req.lab_name}</p>
-                    <p className="text-xs text-gray-400 capitalize">{req.lab_type}</p>
-                  </td>
-                  <td className="px-5 py-3.5 hidden md:table-cell text-gray-600 text-xs">{req.requested_by}</td>
-                  <td className="px-5 py-3.5">
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${STATUS_COLOR[req.status] || 'bg-gray-100 text-gray-600'}`}>
-                      {req.status_display || req.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-right">
-                    {req.record_id ? (
-                      <button
-                        onClick={() => navigate(`/patient/records/${req.record_id}`)}
-                        className="text-xs text-teal-600 hover:text-teal-800 font-medium"
-                      >
-                        View →
-                      </button>
-                    ) : (
-                      <span className="text-xs text-gray-400">Pending</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// ─── Record Detail ────────────────────────────────────────────────────────────
-export function PatientRecordDetail() {
-  const { record_id } = useParams()
-  const navigate      = useNavigate()
-  const [data, setData]       = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState('')
-  const [tab, setTab]         = useState('overview') // 'overview' | 'history'
-  const [history, setHistory] = useState(null)
-  const [histLoading, setHistLoading] = useState(false)
-
-  useEffect(() => {
-    getPatientRecordDetail(record_id)
-      .then(d => {
-        if (d.success === false) setError(d.error || 'Record not found.')
-        else setData(d)
-      })
-      .catch(() => setError('Failed to load record.'))
-      .finally(() => setLoading(false))
-  }, [record_id])
-
-  async function loadHistory() {
-    if (history) return
-    setHistLoading(true)
+  const fetchRecords = async () => {
     try {
-      const data = await getPatientRecordHistory(record_id)
-      setHistory(data.history || [])
-    } catch { setHistory([]) }
-    finally { setHistLoading(false) }
+      setLoading(true);
+      setError("");
+
+      const data = await getPatientRecords();
+
+      // API STRUCTURE:
+      // records_by_hospital -> requests[]
+
+      const flattenedRecords = (
+        data?.records_by_hospital || []
+      ).flatMap((hospital) =>
+        (hospital.requests || []).map((req) => ({
+          ...req,
+          hospital_name:
+            hospital.hospital_name ||
+            hospital.hospital ||
+            "Unknown Hospital",
+        }))
+      );
+
+      setRecords(flattenedRecords);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load records");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredRecords = useMemo(() => {
+    return records.filter((record) => {
+      const text = JSON.stringify(record).toLowerCase();
+
+      const matchesSearch = text.includes(search.toLowerCase());
+
+      const isMedical =
+        !!record.primary_diagnosis ||
+        !!record.blood_pressure ||
+        !!record.prescription;
+
+      const type = isMedical ? "medical" : "lab";
+
+      const matchesFilter =
+        filter === "all" ? true : filter === type;
+
+      return matchesSearch && matchesFilter;
+    });
+  }, [records, search, filter]);
+
+  const openRecord = (record) => {
+    navigate(`/patient/records/${record.record_id}`);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="animate-pulse space-y-4">
+            <div className="h-10 w-72 bg-slate-200 rounded-xl" />
+            <div className="grid gap-5">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl h-40 border border-slate-200"
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
-
-  function handleTabChange(t) {
-    setTab(t)
-    if (t === 'history') loadHistory()
-  }
-
-  if (loading) return <Spinner />
-  if (error)   return (
-    <div className="text-center py-16">
-      <p className="text-red-500 mb-4">{error}</p>
-      <button onClick={() => navigate('/patient/records')} className="text-sm text-teal-600 hover:underline">← Back to records</button>
-    </div>
-  )
-
-  const { record, lab_request, audit, custom_field_values, lab_custom_field_schema } = data
 
   return (
-    <div className="flex flex-col gap-6 max-w-3xl">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* HEADER */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">
+            My Medical Records
+          </h1>
 
-      {/* Back */}
-      <button onClick={() => navigate('/patient/records')} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 w-fit">
-        ← Back to records
-      </button>
-
-      {/* Header */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs text-gray-400 mb-1">Record ID</p>
-            <p className="font-mono text-sm text-gray-700">{String(record.record_id).slice(0, 16)}…</p>
-            <p className="text-xs text-gray-400 mt-2">Version {record.version}</p>
-          </div>
-          <span className={`text-xs font-medium px-3 py-1.5 rounded-full ${STATUS_COLOR[lab_request?.status] || 'bg-gray-100 text-gray-600'}`}>
-            {lab_request?.status_display || lab_request?.status}
-          </span>
+          <p className="text-slate-500 mt-2">
+            Access all your medical and laboratory reports
+          </p>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <div className="flex gap-1">
-          {[['overview', '📋 Overview'], ['history', '📅 History']].map(([key, label]) => (
-            <button key={key} onClick={() => handleTabChange(key)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors
-                ${tab === key ? 'text-teal-600 border-teal-600' : 'text-gray-500 border-transparent hover:text-gray-700'}`}>
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+        {/* SEARCH + FILTER */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* SEARCH */}
+            <div className="relative flex-1">
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+              />
 
-      {tab === 'overview' && (
-        <div className="flex flex-col gap-4">
+              <input
+                type="text"
+                placeholder="Search records..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
 
-          {/* Lab info */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-            <h2 className="text-sm font-semibold text-gray-900">Lab Information</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                ['Lab', lab_request?.lab_name],
-                ['Hospital', lab_request?.hospital_name],
-                ['Requested by', lab_request?.requested_by],
-                ['Staff code', lab_request?.requested_by_staff_code],
-              ].map(([label, val]) => val && (
-                <div key={label}>
-                  <p className="text-xs text-gray-400">{label}</p>
-                  <p className="text-sm font-medium text-gray-800">{val}</p>
-                </div>
-              ))}
+            {/* FILTER */}
+            <div className="flex items-center gap-2">
+              <Filter size={18} className="text-slate-500" />
+
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Records</option>
+                <option value="medical">Medical Records</option>
+                <option value="lab">Lab Reports</option>
+              </select>
             </div>
           </div>
-
-          {/* Clinical notes */}
-          {(lab_request?.diagnosis || lab_request?.treatment_plan || lab_request?.notes) && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-              <h2 className="text-sm font-semibold text-gray-900">Clinical Notes</h2>
-              {lab_request?.diagnosis && (
-                <div><p className="text-xs text-gray-400">Diagnosis</p><p className="text-sm text-gray-800">{lab_request.diagnosis}</p></div>
-              )}
-              {lab_request?.treatment_plan && (
-                <div><p className="text-xs text-gray-400">Treatment Plan</p><p className="text-sm text-gray-800">{lab_request.treatment_plan}</p></div>
-              )}
-              {lab_request?.notes && (
-                <div><p className="text-xs text-gray-400">Notes</p><p className="text-sm text-gray-800">{lab_request.notes}</p></div>
-              )}
-            </div>
-          )}
-
-          {/* Lab results */}
-          {lab_custom_field_schema?.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">Lab Results</h2>
-              <div className="space-y-2">
-                {lab_custom_field_schema.map(field => (
-                  <div key={field.key} className="flex items-center justify-between px-3 py-2.5 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-700 font-medium">{field.label}</p>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {custom_field_values?.[field.key] ?? <span className="text-gray-400 font-normal">—</span>}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Audit */}
-          {audit && (
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">Audit Trail</h2>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-xs text-gray-400">Created by</p><p className="text-gray-800">{audit.created_by_name || '—'}</p></div>
-                <div><p className="text-xs text-gray-400">Created at</p><p className="text-gray-800">{audit.created_at ? new Date(audit.created_at).toLocaleDateString('en-IN') : '—'}</p></div>
-                <div><p className="text-xs text-gray-400">Last updated by</p><p className="text-gray-800">{audit.latest_updated_by_name || '—'}</p></div>
-                <div><p className="text-xs text-gray-400">Last updated</p><p className="text-gray-800">{audit.latest_updated_at ? new Date(audit.latest_updated_at).toLocaleDateString('en-IN') : '—'}</p></div>
-              </div>
-            </div>
-          )}
         </div>
-      )}
 
-      {tab === 'history' && (
-        <div>
-          {histLoading ? <Spinner /> : (history || []).length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">No version history available.</p>
-          ) : (
-            <div className="space-y-3">
-              {history.map(h => (
-                <div key={h.version_number} className="bg-white rounded-xl border border-gray-200 p-4 flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                    v{h.version_number}
+        {/* ERROR */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6 flex items-center gap-3 text-red-700">
+            <AlertCircle size={20} />
+            {error}
+          </div>
+        )}
+
+        {/* EMPTY */}
+        {!loading && filteredRecords.length === 0 && (
+          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center">
+            <FileText
+              size={50}
+              className="mx-auto text-slate-300 mb-4"
+            />
+
+            <h3 className="text-xl font-semibold text-slate-800">
+              No Records Found
+            </h3>
+
+            <p className="text-slate-500 mt-2">
+              Your records will appear here once uploaded.
+            </p>
+          </div>
+        )}
+
+        {/* RECORDS */}
+        <div className="grid gap-5">
+          {filteredRecords.map((record) => {
+            const isMedical =
+              !!record.primary_diagnosis ||
+              !!record.blood_pressure ||
+              !!record.prescription;
+
+            return (
+              <div
+                key={record.record_id || record.id}
+                onClick={() => openRecord(record)}
+                className="group bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl hover:border-blue-200 transition-all duration-300 cursor-pointer"
+              >
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  {/* LEFT */}
+                  <div className="flex gap-5">
+                    {/* ICON */}
+                    <div
+                      className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${
+                        isMedical
+                          ? "bg-blue-100 text-blue-600"
+                          : "bg-emerald-100 text-emerald-600"
+                      }`}
+                    >
+                      {isMedical ? (
+                        <Activity size={28} />
+                      ) : (
+                        <FlaskConical size={28} />
+                      )}
+                    </div>
+
+                    {/* DETAILS */}
+                    <div>
+                      <div className="flex flex-wrap items-center gap-3 mb-3">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                            isMedical
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}
+                        >
+                          {isMedical
+                            ? "Medical Record"
+                            : "Lab Report"}
+                        </span>
+
+                        {record.status && (
+                          <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-medium capitalize">
+                            {record.status}
+                          </span>
+                        )}
+                      </div>
+
+                      <h2 className="text-xl font-semibold text-slate-900">
+                        {record.primary_diagnosis ||
+                          record.test_name ||
+                          "Patient Record"}
+                      </h2>
+
+                      <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
+                        <div className="flex items-center gap-2">
+                          <Hospital size={16} />
+                          {record.hospital_name}
+                        </div>
+
+                        {record.created_at && (
+                          <div className="flex items-center gap-2">
+                            <Calendar size={16} />
+                            {new Date(
+                              record.created_at
+                            ).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* MEDICAL */}
+                      {isMedical && (
+                        <div className="mt-5 grid md:grid-cols-3 gap-3">
+                          {record.blood_pressure && (
+                            <div className="bg-slate-50 rounded-xl p-3">
+                              <p className="text-xs text-slate-500">
+                                Blood Pressure
+                              </p>
+
+                              <p className="font-semibold text-slate-900">
+                                {record.blood_pressure}
+                              </p>
+                            </div>
+                          )}
+
+                          {record.heart_rate && (
+                            <div className="bg-slate-50 rounded-xl p-3">
+                              <p className="text-xs text-slate-500">
+                                Heart Rate
+                              </p>
+
+                              <p className="font-semibold text-slate-900">
+                                {record.heart_rate}
+                              </p>
+                            </div>
+                          )}
+
+                          {record.temperature && (
+                            <div className="bg-slate-50 rounded-xl p-3">
+                              <p className="text-xs text-slate-500">
+                                Temperature
+                              </p>
+
+                              <p className="font-semibold text-slate-900">
+                                {record.temperature}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* LAB */}
+                      {!isMedical && record.summary && (
+                        <div className="mt-5 bg-slate-50 rounded-xl p-4">
+                          <p className="text-sm text-slate-600 line-clamp-2">
+                            {record.summary}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{h.changed_by_name} <span className="text-gray-400 font-normal">({h.changed_by_role})</span></p>
-                    <p className="text-xs text-gray-400">{new Date(h.changed_at).toLocaleDateString('en-IN')} · {h.event_type}</p>
-                    {h.change_reason && <p className="text-xs text-gray-500 mt-1">Reason: {h.change_reason}</p>}
+
+                  {/* RIGHT */}
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 rounded-xl bg-slate-100 group-hover:bg-blue-100 flex items-center justify-center transition-all">
+                      <ChevronRight className="text-slate-600 group-hover:text-blue-600" />
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
-  )
+  );
 }

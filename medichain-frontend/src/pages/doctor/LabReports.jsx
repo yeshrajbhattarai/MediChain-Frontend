@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   FlaskConical,
   Search,
@@ -7,134 +8,6 @@ import {
 } from 'lucide-react'
 
 import { getDoctorRecords } from '../../api/doctor'
-
-// ─── Report Preview Modal ─────────────────────────────────────────────────────
-
-function ReportPreviewModal({ report, open, onClose }) {
-  if (!open || !report) return null
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        background: 'rgba(15,23,42,0.45)',
-        backdropFilter: 'blur(4px)',
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* HEADER */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              {report.lab_name || 'Lab Report'}
-            </h2>
-
-            <p className="text-sm text-gray-400 mt-1">
-              Record ID: {report.record_id}
-            </p>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-xl hover:bg-gray-100 flex items-center justify-center transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-
-        {/* BODY */}
-        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-
-          {/* TOP INFO */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
-              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-                Patient
-              </p>
-
-              <p className="font-semibold text-gray-900">
-                {report.patient_name || '—'}
-              </p>
-            </div>
-
-            <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
-              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-                Recorded By
-              </p>
-
-              <p className="font-semibold text-gray-900">
-                {report.recorded_by_name || '—'}
-              </p>
-            </div>
-          </div>
-
-          {/* META */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            <div className="border border-gray-100 rounded-2xl p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-                Version
-              </p>
-
-              <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                v{report.version || 1}
-              </span>
-            </div>
-
-            <div className="border border-gray-100 rounded-2xl p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-                Created At
-              </p>
-
-              <p className="font-medium text-gray-800 text-sm">
-                {report.created_at
-                  ? new Date(report.created_at).toLocaleString('en-IN')
-                  : '—'}
-              </p>
-            </div>
-          </div>
-
-          {/* CLINICAL VALUES */}
-          <div className="border border-gray-100 rounded-2xl p-5">
-            <h3 className="font-semibold text-gray-900 mb-4">
-              Clinical Values
-            </h3>
-
-            <div className="space-y-3">
-              {report.custom_field_values &&
-              Object.keys(report.custom_field_values).length > 0 ? (
-                Object.entries(report.custom_field_values).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex items-center justify-between border-b border-gray-100 pb-3"
-                  >
-                    <span className="text-sm text-gray-500 capitalize">
-                      {key.replaceAll('_', ' ')}
-                    </span>
-
-                    <span className="text-sm font-semibold text-gray-900">
-                      {String(value)}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-400">
-                  No clinical values available.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DoctorLabReports() {
@@ -142,6 +15,7 @@ export default function DoctorLabReports() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(null)
+  const navigate = useNavigate()
 
   useEffect(() => {
     let mounted = true
@@ -273,7 +147,11 @@ export default function DoctorLabReports() {
 
               <button
                 key={r.record_id}
-                onClick={() => setSelected(r)}
+                onClick={() =>
+                  navigate(
+                    `/doctor/patients/${r.patient?.id}/reports/lab/${r.record_id}`
+                  )
+                }
                 className="
                   w-full
                   text-left
@@ -354,12 +232,6 @@ export default function DoctorLabReports() {
         </p>
       )}
 
-      {/* MODAL */}
-      <ReportPreviewModal
-        report={selected}
-        open={!!selected}
-        onClose={() => setSelected(null)}
-      />
     </div>
   )
 }

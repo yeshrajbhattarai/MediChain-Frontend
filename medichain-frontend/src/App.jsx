@@ -24,6 +24,7 @@ import DoctorPatients       from './pages/doctor/MyPatients'
 import DoctorPatientsDetail from './pages/doctor/MyPatientsDetail'
 import DoctorLabs           from './pages/doctor/Labs'
 import CreateMedicalRecord  from './pages/doctor/CreateMedicalREcord'
+import DoctorReportViewer from './pages/doctor/DoctorReportViewer'
 import DoctorLabReports     from './pages/doctor/LabReports'
 import DoctorMedicalRecords from './pages/doctor/MedicalRecords'
 import DoctorApprovalQueue  from './pages/doctor/ApprovalQueue'
@@ -47,7 +48,8 @@ import NurseProfile from './pages/nurses/Profile'
 
 import PatientLayout from './components/layout/PatientLayout'
 import PatientDashboard from './pages/patient/PatientDashboard'
-import { PatientRecords, PatientRecordDetail } from './pages/patient/PatientRecords'
+import PatientRecords from './pages/patient/PatientRecords'
+import PatientRecordDetail from './pages/patient/PatientRecordDetail'
 import PatientProfile from './pages/patient/PatientProfile'
 import PatientConsent from './pages/patient/PatientConsent'
 
@@ -94,7 +96,10 @@ export default function App() {
             path="patients/:id/create-record"
             element={<CreateMedicalRecord />}
           />
-
+          <Route
+            path="patients/:patientId/reports/:type/:reportId"
+            element={<DoctorReportViewer />}
+          />
           <Route path="consent" element={<Consent />} />
 
           <Route path="labs" element={<DoctorLabs />} />
@@ -148,8 +153,9 @@ export default function App() {
           <Route path="dashboard" element={<PatientDashboard />} />
 
           <Route path="records" element={<PatientRecords />} />
+
           <Route
-            path="records/:record_id"
+            path="records/:recordId"
             element={<PatientRecordDetail />}
           />
 

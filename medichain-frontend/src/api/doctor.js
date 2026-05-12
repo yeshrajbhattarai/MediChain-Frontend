@@ -32,7 +32,10 @@ export const getDoctorMedicalRecords = () =>
 
 export const getMedicalRecordIntegrity = (recordId, version = null) => {
   const query = version ? `?v=${encodeURIComponent(version)}` : ''
-  return get(`/api/v1/staff/doctor/medical-records/${recordId}/integrity/${query}`)
+
+  return get(
+    `/api/v1/staff/records/${recordId}/integrity/${query}`
+  )
 }
 
 export const getDoctorApprovalQueue = () =>

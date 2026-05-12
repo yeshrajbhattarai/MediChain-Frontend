@@ -41,7 +41,12 @@ export default function Sidebar({ navItems = [], role = '', hospitalName = '', o
 
         <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
           {navItems.map(item => {
-            const isActive = location.pathname === item.path
+            const isActive =
+  location.pathname === item.path ||
+  (
+    item.path !== '/doctor/dashboard' &&
+    location.pathname.startsWith(item.path + '/')
+  )
             return (
               <Link key={item.path} to={item.path}
                 onClick={() => setOpen && setOpen(false)}

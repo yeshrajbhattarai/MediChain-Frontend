@@ -1,10 +1,12 @@
 // src/pages/patient/PatientDashboard.jsx
 
 import { useEffect, useState } from 'react'
+import { getPatientConsents } from '../../api/consent'
 import {
   Activity,
   FileText,
   ShieldCheck,
+  ShieldAlert,
   Clock3,
   ChevronRight,
 } from 'lucide-react'
@@ -16,6 +18,7 @@ import { getPatientDashboard } from '../../api/patient'
 export default function PatientDashboard() {
   const [loading, setLoading] = useState(true)
   const [dashboard, setDashboard] = useState(null)
+  const [consents, setConsents] = useState([])
 
   const payload = getPayload()
 
@@ -25,14 +28,29 @@ export default function PatientDashboard() {
 
   const fetchDashboard = async () => {
     try {
-      const data = await getPatientDashboard()
-      setDashboard(data)
+      const [dashboardData, consentData] = await Promise.all([
+        getPatientDashboard(),
+        getPatientConsents(),
+      ])
+
+      setDashboard(dashboardData)
+
+      setConsents(
+        Array.isArray(consentData)
+          ? consentData
+          : []
+      )
     } catch (err) {
       errorToast(err.message)
     } finally {
       setLoading(false)
     }
   }
+
+  const pendingConsents = consents.filter(
+    consent =>
+      consent.patient_choice === 'PENDING'
+  )
 
   const statCards = [
     {
@@ -46,10 +64,7 @@ export default function PatientDashboard() {
     },
     {
       title: 'Pending Requests',
-      value:
-        dashboard?.pending_requests ||
-        dashboard?.stats?.pending_requests ||
-        0,
+      value: pendingConsents.length,
       icon: Clock3,
       color: 'bg-amber-50 text-amber-600',
     },
@@ -139,6 +154,125 @@ export default function PatientDashboard() {
           )
         })}
       </div>
+      {/* PENDING CONSENT ALERTS */}
+
+{pendingConsents.length > 0 && (
+  <div
+    className="
+      rounded-3xl
+      border border-amber-200
+      bg-gradient-to-br from-amber-50 to-orange-50
+      p-6
+      shadow-sm
+    "
+  >
+    <div className="flex items-start justify-between gap-6">
+
+      <div className="flex items-start gap-4">
+
+        <div
+          className="
+            w-14 h-14
+            rounded-2xl
+            bg-amber-100
+            flex items-center justify-center
+          "
+        >
+          <ShieldAlert className="w-7 h-7 text-amber-600" />
+        </div>
+
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Consent Approval Required
+          </h2>
+
+          <p className="text-gray-600 mt-2">
+            Hospitals are requesting access to your
+            medical records.
+          </p>
+        </div>
+      </div>
+
+      <div
+        className="
+          px-4 py-2
+          rounded-full
+          bg-amber-100
+          text-amber-700
+          font-semibold
+          text-sm
+        "
+      >
+        {pendingConsents.length} Pending
+      </div>
+    </div>
+
+    <div className="mt-6 space-y-4">
+
+      {pendingConsents.slice(0, 3).map(consent => (
+
+        <div
+          key={consent.consent_id}
+          className="
+            bg-white
+            border border-amber-100
+            rounded-2xl
+            p-5
+          "
+        >
+          <div className="flex items-start justify-between gap-4">
+
+            <div>
+
+              <p className="text-sm text-gray-500">
+                Requesting Hospital
+              </p>
+
+              <h3 className="text-lg font-bold text-gray-900 mt-1">
+                {consent.requesting_hospital}
+              </h3>
+
+              <p className="text-sm text-gray-500 mt-3">
+                Wants access to your medical records
+              </p>
+            </div>
+
+            <div className="flex flex-col items-end gap-2">
+
+              <div
+                className="
+                  px-3 py-1
+                  rounded-full
+                  bg-emerald-50
+                  text-emerald-700
+                  text-xs font-semibold
+                "
+              >
+                Hospital Approved
+              </div>
+
+              <div
+                className="
+                  px-3 py-1
+                  rounded-full
+                  bg-amber-50
+                  text-amber-700
+                  text-xs font-semibold
+                "
+              >
+                Awaiting Your Approval
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+
+      ))}
+
+    </div>
+  </div>
+)}
 
       {/* PROFILE SUMMARY */}
       <div className="

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Search,
   FileText,
@@ -13,256 +14,6 @@ import {
   getMedicalRecordIntegrity,
 } from '../../api/doctor'
 
-// ─── Preview Modal ────────────────────────────────────────────────────────────
-    function MedicalRecordPreviewModal({ record, open, onClose }) {
-
-      const [integrity, setIntegrity] = useState(null)
-      const [integrityLoading, setIntegrityLoading] = useState(false)
-
-      useEffect(() => {
-  if (!record?.finalized_record_id) return
-
-  async function loadIntegrity() {
-    try {
-      setIntegrityLoading(true)
-
-      console.log(
-        'Fetching integrity for:',
-        record.finalized_record_id
-      )
-
-      const data = await getMedicalRecordIntegrity(
-        record.finalized_record_id
-      )
-
-      console.log('Integrity Response:', data)
-
-      setIntegrity(data)
-
-    } catch (err) {
-      console.error('Integrity fetch failed:', err)
-
-    } finally {
-      setIntegrityLoading(false)
-    }
-  }
-
-  loadIntegrity()
-
-}, [record])
-
-      if (!open || !record) return null
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{
-        background: 'rgba(15,23,42,0.45)',
-        backdropFilter: 'blur(4px)',
-      }}
-      onClick={onClose}
-    >
-      <div
-        className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* HEADER */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-
-              <h2 className="text-xl font-semibold text-gray-900">
-                {record.title || 'Medical Record'}
-              </h2>
-
-              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                Finalized
-              </span>
-
-            </div>
-
-            <p className="text-sm text-gray-400 mt-1">
-              Record ID: {record.finalized_record_id || '—'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-
-            <div
-              className={`
-                flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium
-                ${
-                  integrity?.integrity?.is_verified
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-red-100 text-red-700'
-                }
-              `}
-            >
-              <ShieldCheck className="w-4 h-4" />
-
-              {integrityLoading
-                ? 'Checking Integrity...'
-                : integrity?.integrity?.is_verified
-                  ? 'Record Integrity Verified'
-                  : 'Integrity Check Failed'}
-            </div>
-
-            <button
-              onClick={onClose}
-              className="w-10 h-10 rounded-xl hover:bg-gray-100 flex items-center justify-center transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-
-          </div>
-        </div>
-
-        {/* BODY */}
-        <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-
-          {/* TOP INFO */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-            <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
-
-              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-                Patient
-              </p>
-
-              <p className="font-semibold text-gray-900">
-                {record.patient?.full_name || '—'}
-              </p>
-
-            </div>
-
-            <div className="border border-gray-100 rounded-2xl p-4 bg-gray-50">
-
-              <p className="text-xs uppercase tracking-wide text-gray-400 mb-1">
-                Doctor
-              </p>
-
-              <p className="font-semibold text-gray-900">
-                {record.doctor?.full_name || '—'}
-              </p>
-
-            </div>
-
-          </div>
-
-          {/* DIAGNOSIS */}
-          <div className="border border-gray-100 rounded-2xl p-5">
-
-            <div className="flex items-center gap-2 mb-4">
-
-              <Activity className="w-5 h-5 text-teal-600" />
-
-              <h3 className="font-semibold text-gray-900">
-                Diagnosis
-              </h3>
-
-            </div>
-
-            <p className="text-gray-700 leading-relaxed">
-              {record.primary_diagnosis || 'No diagnosis available.'}
-            </p>
-
-          </div>
-
-          {/* TREATMENT */}
-          <div className="border border-gray-100 rounded-2xl p-5">
-
-            <h3 className="font-semibold text-gray-900 mb-4">
-              Treatment Plan
-            </h3>
-
-            <p className="text-gray-700 leading-relaxed">
-              {record.treatment_given || 'No treatment plan available.'}
-            </p>
-
-          </div>
-
-          {/* CLINICAL VALUES */}
-          <div className="border border-gray-100 rounded-2xl p-5">
-
-            <h3 className="font-semibold text-gray-900 mb-4">
-              Clinical Values
-            </h3>
-
-            <div className="space-y-3">
-
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <span className="text-sm text-gray-500">
-                  Blood Pressure
-                </span>
-
-                <span className="font-semibold text-gray-900">
-                  {record.blood_pressure || '—'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <span className="text-sm text-gray-500">
-                  Pulse Rate
-                </span>
-
-                <span className="font-semibold text-gray-900">
-                  {record.pulse_rate || '—'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <span className="text-sm text-gray-500">
-                  Temperature
-                </span>
-
-                <span className="font-semibold text-gray-900">
-                  {record.temperature_c || '—'} °C
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <span className="text-sm text-gray-500">
-                  SPO2
-                </span>
-
-                <span className="font-semibold text-gray-900">
-                  {record.spo2_percent || '—'}%
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">
-                  Blood Sugar
-                </span>
-
-                <span className="font-semibold text-gray-900">
-                  {record.random_blood_sugar || '—'}
-                </span>
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* NURSE NOTES */}
-          <div className="border border-gray-100 rounded-2xl p-5">
-
-            <h3 className="font-semibold text-gray-900 mb-4">
-              Nurse Observation
-            </h3>
-
-            <p className="text-gray-700 leading-relaxed">
-              {record.nurse_observation || 'No observations available.'}
-            </p>
-
-          </div>
-
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -273,6 +24,7 @@ export default function DoctorMedicalRecords() {
   const [query, setQuery] = useState('')
   const [integrity, setIntegrity] = useState(null)
   const [integrityLoading, setIntegrityLoading] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     let mounted = true
@@ -413,8 +165,11 @@ export default function DoctorMedicalRecords() {
 
               <button
                 key={record.finalized_record_id || record.id}
-                onClick={() => setSelected(record)}
-                // onClick={() => openRecord(record.finalized_record_id)} //! this is temporary
+                onClick={() =>
+                  navigate(
+                    `/doctor/patients/${record.patient?.id}/reports/medical/${record.finalized_record_id}`
+                  )
+                }
                 className="
                   w-full
                   text-left
@@ -493,12 +248,6 @@ export default function DoctorMedicalRecords() {
         </p>
       )}
 
-      {/* MODAL */}
-      <MedicalRecordPreviewModal
-        record={selected}
-        open={!!selected}
-        onClose={() => setSelected(null)}
-      />
 
     </div>
   )
