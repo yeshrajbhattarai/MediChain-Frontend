@@ -3,38 +3,12 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getProfile } from '../../auth_store/profileStore'
 import { fetchWithAuth } from '../../api/client'
-import { requestCkdPrediction } from '../../api/doctor'
 
 const api  = (url, opts = {}) => fetchWithAuth(`/api/v1${url}`, {
   ...opts,
   headers: { 'Content-Type': 'application/json', ...opts.headers },
 })
-
-// ── KFT reference ranges ──────────────────────────────────────────────────────
-const KFT_REFS = [
-  { key: 'blood_pressure_systolic',  label: 'BP Systolic',   unit: 'mmHg',  low: 90,  high: 120 },
-  { key: 'blood_pressure_diastolic', label: 'BP Diastolic',  unit: 'mmHg',  low: 60,  high: 80  },
-  { key: 'cholesterol',              label: 'Cholesterol',   unit: 'mg/dL', low: 0,   high: 200 },
-  { key: 'blood_glucose',            label: 'Blood Glucose', unit: 'mg/dL', low: 70,  high: 100 },
-  { key: 'heart_rate',               label: 'Heart Rate',    unit: 'bpm',   low: 60,  high: 100 },
-]
-
-function getStatus(ref, val) {
-  const v = parseFloat(val)
-  if (isNaN(v)) return 'unknown'
-  if (v < ref.low) return 'low'
-  if (v > ref.high) return 'high'
-  return 'normal'
-}
-
-const S = {
-  normal:  { badge: 'bg-teal-50 text-teal-700 ring-1 ring-teal-200',    label: 'Normal' },
-  low:     { badge: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',    label: 'Low'    },
-  high:    { badge: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',    label: 'High'   },
-  unknown: { badge: 'bg-gray-100 text-gray-400',                        label: '—'      },
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -162,6 +136,7 @@ function OverviewTab({ detail }) {
         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Registration</h3>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
           <DataItem label="Registered By" value={p.registered_by_name} />
+          <DataItem label="Government ID" value={detail?.gov_id_masked || '—'} />
           <DataItem label="Status" value={p.is_active ? 'Active' : 'Inactive'} />
         </div>
       </div>
@@ -171,16 +146,23 @@ function OverviewTab({ detail }) {
 
 // ── TAB 2: Send to Lab ────────────────────────────────────────────────────────
 
-const CHEST_TYPES = ['Typical Angina', 'Atypical Angina', 'Non-Anginal Pain', 'Asymptomatic']
+const CHEST_TYPES = [
+  { label: 'Typical Angina', value: 'typical' },
+  { label: 'Atypical Angina', value: 'atypical' },
+  { label: 'Non-Anginal Pain', value: 'non_anginal' },
+  { label: 'Asymptomatic', value: 'asymptomatic' },
+]
 const BLANK_LAB   = { chest_pain_type: '', diagnosis: '', treatment_plan: '', notes: '', lab_id: '' }
 
 function SendToLabTab({ patient, detail, toast$ }) {
   const [form, setForm]     = useState(BLANK_LAB)
   const [errors, setErrors] = useState({})
+  const [customErrors, setCustomErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [sent, setSent]     = useState(null)
   const [labsList, setLabsList] = useState([])
-  const doctor = getProfile()
+  const [labSchema, setLabSchema] = useState([])
+  const [customValues, setCustomValues] = useState({})
 
   useEffect(() => {
     if (detail?.available_labs) {
@@ -188,7 +170,27 @@ function SendToLabTab({ patient, detail, toast$ }) {
     }
   }, [detail])
 
-  function set(k, v) { setForm(f => ({ ...f, [k]: v })); setErrors(e => ({ ...e, [k]: undefined })) }
+  function set(k, v) {
+    setForm(f => ({ ...f, [k]: v }))
+    setErrors(e => ({ ...e, [k]: undefined }))
+  }
+
+  useEffect(() => {
+    const selected = labsList.find(l => String(l.id) === String(form.lab_id))
+    const schema = selected?.custom_field_schema || []
+    setLabSchema(schema)
+    const initial = {}
+    schema.forEach(field => {
+      initial[field.key] = customValues[field.key] ?? ''
+    })
+    setCustomValues(initial)
+    setCustomErrors({})
+  }, [form.lab_id, labsList])
+
+  function updateCustomField(key, value) {
+    setCustomValues(prev => ({ ...prev, [key]: value }))
+    setCustomErrors(prev => ({ ...prev, [key]: undefined }))
+  }
 
   async function submit() {
     const errs = {}
@@ -196,13 +198,27 @@ function SendToLabTab({ patient, detail, toast$ }) {
     if (!form.diagnosis.trim()) errs.diagnosis = 'Required'
     if (!form.treatment_plan.trim()) errs.treatment_plan = 'Required'
     if (!form.lab_id.trim()) errs.lab_id = 'Required'
-    if (Object.keys(errs).length) { setErrors(errs); return }
+    const fieldErrors = {}
+    labSchema.forEach(field => {
+      if (field.required && !customValues[field.key]) {
+        fieldErrors[field.key] = 'Required'
+      }
+    })
+    if (Object.keys(errs).length || Object.keys(fieldErrors).length) {
+      setErrors(errs)
+      setCustomErrors(fieldErrors)
+      return
+    }
 
     setLoading(true); setErrors({})
     try {
       const res  = await api(`/staff/doctor/patients/${patient.id}/send-to-lab/`, {
         method: 'POST',
-        body:   JSON.stringify({ ...form, patient_id: patient.id }),
+        body:   JSON.stringify({
+          ...form,
+          patient_id: patient.id,
+          custom_field_values: labSchema.length ? customValues : undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -210,15 +226,16 @@ function SendToLabTab({ patient, detail, toast$ }) {
         Object.entries(data.errors || data).forEach(([k, v]) => { mapped[k] = Array.isArray(v) ? v[0] : v })
         setErrors(mapped); return
       }
-      setSent({ ...form })
+      setSent({ ...form, lab_name: labsList.find(l => l.id === form.lab_id)?.name })
       toast$('Lab request sent successfully')
       setForm(BLANK_LAB)
+      setCustomValues({})
     } catch { toast$('Network error', 'err') }
     finally { setLoading(false) }
   }
 
   const i = k => `w-full px-3 py-2 text-sm border rounded-lg outline-none transition-all
-    ${errors[k] ? 'border-red-400 bg-red-50 focus:ring-1 focus:ring-red-200'
+    ${errors[k] || customErrors[k] ? 'border-red-400 bg-red-50 focus:ring-1 focus:ring-red-200'
                 : 'border-gray-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-100'}`
 
   return (
@@ -231,12 +248,12 @@ function SendToLabTab({ patient, detail, toast$ }) {
           <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1.5">Chest Pain Type *</label>
           <div className="grid grid-cols-2 gap-2">
             {CHEST_TYPES.map(t => (
-              <button key={t} onClick={() => set('chest_pain_type', t)}
+              <button key={t.value} onClick={() => set('chest_pain_type', t.value)}
                 className={`px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all text-left
-                  ${form.chest_pain_type === t
+                  ${form.chest_pain_type === t.value
                     ? 'border-teal-500 bg-teal-50 text-teal-700'
                     : 'border-gray-200 text-gray-600 hover:border-teal-300'}`}>
-                {t}
+                {t.label}
               </button>
             ))}
           </div>
@@ -276,12 +293,49 @@ function SendToLabTab({ patient, detail, toast$ }) {
             <option value="">Choose lab…</option>
             {Array.isArray(labsList) && labsList.map(l => (
               <option key={l.id} value={l.id}>
-                {l.name ?? l.lab_name ?? '—'}
+                {l.name ?? l.lab_name ?? '—'} {l.lab_type ? `(${l.lab_type.toUpperCase()})` : ''}
               </option>
             ))}
           </select>
           {errors.lab_id && <p className="text-xs text-red-500 mt-0.5">{errors.lab_id}</p>}
         </div>
+
+        {labSchema.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Lab Fields</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {labSchema.map(field => (
+                <div key={field.key}>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide block mb-1">
+                    {field.label} {field.required ? '*' : ''}
+                  </label>
+                  {field.type === 'boolean' ? (
+                    <select
+                      className={i(field.key)}
+                      value={customValues[field.key] || ''}
+                      onChange={e => updateCustomField(field.key, e.target.value)}
+                    >
+                      <option value="">Select…</option>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  ) : (
+                    <input
+                      type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                      className={i(field.key)}
+                      placeholder={field.unit ? `${field.label} (${field.unit})` : field.label}
+                      value={customValues[field.key] || ''}
+                      onChange={e => updateCustomField(field.key, e.target.value)}
+                    />
+                  )}
+                  {customErrors[field.key] && (
+                    <p className="text-xs text-red-500 mt-0.5">{customErrors[field.key]}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <button onClick={submit} disabled={loading}
           className="w-full py-2 bg-teal-600 hover:bg-teal-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
@@ -292,7 +346,9 @@ function SendToLabTab({ patient, detail, toast$ }) {
       {sent && (
         <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
           <p className="text-sm font-semibold text-teal-800 mb-2">✓ Request sent!</p>
-          <p className="text-xs text-teal-700">Patient can now go to the lab for testing.</p>
+          <p className="text-xs text-teal-700">
+            {sent.lab_name ? `${sent.lab_name} has been notified.` : 'Lab has been notified.'}
+          </p>
         </div>
       )}
     </div>

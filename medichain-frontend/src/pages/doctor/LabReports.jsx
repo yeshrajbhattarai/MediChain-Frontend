@@ -14,6 +14,8 @@ export default function DoctorLabReports() {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
+  const [labFilter, setLabFilter] = useState('all')
+  const [labs, setLabs] = useState([])
   const [selected, setSelected] = useState(null)
   const navigate = useNavigate()
 
@@ -31,6 +33,7 @@ export default function DoctorLabReports() {
           : []
 
         setRecords(rows)
+        setLabs(Array.isArray(data?.labs) ? data.labs : [])
 
       } catch {
         setRecords([])
@@ -52,9 +55,11 @@ export default function DoctorLabReports() {
       const text =
         `${r.patient_name || ''} ${r.lab_name || ''} ${r.record_id || ''}`.toLowerCase()
 
-      return text.includes(query.toLowerCase())
+      const matchesQuery = text.includes(query.toLowerCase())
+      const matchesLab = labFilter === 'all' ? true : r.lab_name === labFilter
+      return matchesQuery && matchesLab
     })
-  }, [records, query])
+  }, [records, query, labFilter])
 
   return (
     <div className="space-y-6">
@@ -82,32 +87,47 @@ export default function DoctorLabReports() {
         </div>
       </div>
 
-      {/* SEARCH */}
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-          <Search className="w-4 h-4" />
-        </span>
+      {/* SEARCH + FILTER */}
+      <div className="flex flex-col lg:flex-row gap-3">
+        <div className="relative flex-1">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <Search className="w-4 h-4" />
+          </span>
 
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search patient, lab or record ID..."
-          className="
-            w-full
-            pl-10
-            pr-3
-            py-2.5
-            text-sm
-            border
-            border-gray-200
-            rounded-xl
-            outline-none
-            focus:border-blue-400
-            focus:ring-1
-            focus:ring-blue-100
-            transition-colors
-          "
-        />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search patient, lab or record ID..."
+            className="
+              w-full
+              pl-10
+              pr-3
+              py-2.5
+              text-sm
+              border
+              border-gray-200
+              rounded-xl
+              outline-none
+              focus:border-blue-400
+              focus:ring-1
+              focus:ring-blue-100
+              transition-colors
+            "
+          />
+        </div>
+
+        <select
+          value={labFilter}
+          onChange={(e) => setLabFilter(e.target.value)}
+          className="px-4 py-2.5 text-sm border border-gray-200 rounded-xl outline-none focus:ring-1 focus:ring-blue-100"
+        >
+          <option value="all">All labs</option>
+          {labs.map((lab) => (
+            <option key={lab.id} value={lab.name}>
+              {lab.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* REPORT LIST */}
@@ -147,11 +167,11 @@ export default function DoctorLabReports() {
 
               <button
                 key={r.record_id}
-                onClick={() =>
-                  navigate(
-                    `/doctor/patients/${r.patient?.id}/reports/lab/${r.record_id}`
-                  )
-                }
+                  onClick={() =>
+                    navigate(
+                      `/doctor/reports/lab/${r.record_id}`
+                    )
+                  }
                 className="
                   w-full
                   text-left

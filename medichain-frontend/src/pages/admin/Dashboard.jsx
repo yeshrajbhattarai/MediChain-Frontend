@@ -56,6 +56,10 @@
       { label: 'View Consents',  path: '/admin/consent',     Icon: SendHorizonal,    color: 'text-blue-600',   bg: 'hover:bg-blue-50 hover:border-blue-300'   },
     ]
 
+    const accountStatus = data?.hospital?.account_status
+    const isPending = accountStatus === 'pending'
+    const isSuspended = accountStatus === 'suspended'
+
     return (
       <div className="flex flex-col gap-6">
 
@@ -73,6 +77,30 @@
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">Here's what's happening at your hospital today.</p>
         </div>
+
+        {(isPending || isSuspended) && (
+          <div
+            className={`rounded-xl border px-4 py-3 text-sm font-medium flex items-start gap-3 ${
+              isSuspended
+                ? 'bg-red-50 border-red-200 text-red-700'
+                : 'bg-amber-50 border-amber-200 text-amber-700'
+            }`}
+          >
+            <div className="text-lg">{isSuspended ? '⛔' : '⚠️'}</div>
+            <div>
+              <p className="font-semibold">
+                {isSuspended
+                  ? 'Your hospital account is suspended.'
+                  : 'Your hospital profile is incomplete.'}
+              </p>
+              <p className="text-xs mt-1">
+                {isSuspended
+                  ? 'Contact MediChain support to restore full access.'
+                  : 'Complete your license and address details to activate all services.'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -106,10 +134,12 @@
             <p className="text-xs text-gray-400">{[data?.hospital?.city, data?.hospital?.state].filter(Boolean).join(', ')}</p>
           </div>
           <span className={`text-xs font-medium px-3 py-1.5 rounded-full border w-fit
-            ${data?.hospital?.account_status === 'active'
+            ${accountStatus === 'active'
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-            {data?.hospital?.account_status?.toUpperCase()}
+              : accountStatus === 'suspended'
+                ? 'bg-red-50 text-red-700 border-red-200'
+                : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+            {accountStatus?.toUpperCase() || 'PENDING'}
           </span>
         </div>
 

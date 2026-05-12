@@ -54,10 +54,6 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
   if (!open) return null
 
   async function handleApprove() {
-    if (!appointmentDate) {
-      errorToast('Please set next appointment date')
-      return
-    }
     if (!finalNotes.trim()) {
       errorToast('Please add final doctor notes')
       return
@@ -65,10 +61,13 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
 
     setSubmitting(true)
     try {
-      await finalizeApprovalQueueItem(item.id, {
+      const payload = {
         doctor_final_notes: finalNotes.trim(),
-        next_appointment_date: appointmentDate,
-      })
+      }
+      if (appointmentDate) {
+        payload.next_appointment_date = appointmentDate
+      }
+      await finalizeApprovalQueueItem(item.id, payload)
 
       successToast('Record approved and finalized')
       onApproved()

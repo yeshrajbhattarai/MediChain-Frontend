@@ -36,25 +36,45 @@ const severityStyles = {
 
 }
 
+const ACTION_OPTIONS = [
+  'CONSENT_CREATED',
+  'PATIENT_APPROVED',
+  'PATIENT_REJECTED',
+  'HOSPITAL_APPROVED',
+  'HOSPITAL_REJECTED',
+  'CONSENT_DELETED',
+  'RECORD_ACCESS_ATTEMPT',
+  'RECORD_ACCESS_SUCCESS',
+  'HASH_MATCHED',
+  'HASH_MISMATCH',
+]
+
 export default function AdminAuditLogs() {
 
   const [logs, setLogs] = useState([])
   const [loading, setLoading] = useState(true)
 
   const [severityFilter, setSeverityFilter] = useState('ALL')
+  const [actionFilter, setActionFilter] = useState('ALL')
+  const [consentFilter, setConsentFilter] = useState('')
   const [search, setSearch] = useState('')
 
   const [expanded, setExpanded] = useState(null)
 
   useEffect(() => {
     loadLogs()
-  }, [])
+  }, [severityFilter, actionFilter, consentFilter])
 
   const loadLogs = async () => {
 
     try {
+      setLoading(true)
 
-      const res = await getAuditLogs()
+      const res = await getAuditLogs({
+        severity: severityFilter !== 'ALL' ? severityFilter : '',
+        action: actionFilter !== 'ALL' ? actionFilter : '',
+        consent_id: consentFilter.trim(),
+      })
 
       setLogs(Array.isArray(res) ? res : [])
 
@@ -78,6 +98,16 @@ export default function AdminAuditLogs() {
           ? true
           : log.severity === severityFilter
 
+      const matchesAction =
+        actionFilter === 'ALL'
+          ? true
+          : log.action === actionFilter
+
+      const matchesConsent =
+        !consentFilter
+          ? true
+          : String(log.consent_id || '').includes(consentFilter)
+
       const q = search.toLowerCase()
 
       const matchesSearch = [
@@ -90,11 +120,11 @@ export default function AdminAuditLogs() {
         .toLowerCase()
         .includes(q)
 
-      return matchesSeverity && matchesSearch
+      return matchesSeverity && matchesAction && matchesConsent && matchesSearch
 
     })
 
-  }, [logs, severityFilter, search])
+  }, [logs, severityFilter, actionFilter, consentFilter, search])
 
 const stats = {
   total: logs.length,
@@ -202,7 +232,7 @@ const stats = {
               </p>
 
               <h2 className="text-3xl sm:text-4xl font-bold mt-4 text-red-700">
-                {stats.CRITICAL}
+                {stats.critical}
               </h2>
             </div>
 
@@ -227,7 +257,7 @@ const stats = {
               </p>
 
               <h2 className="text-3xl sm:text-4xl font-bold mt-4 text-yellow-800">
-                {stats.WARNING}
+                {stats.warning}
               </h2>
             </div>
 
@@ -252,7 +282,7 @@ const stats = {
               </p>
 
               <h2 className="text-3xl sm:text-4xl font-bold mt-4 text-blue-800">
-                {stats.INFO}
+                {stats.info}
               </h2>
             </div>
 
@@ -268,9 +298,9 @@ const stats = {
 
       {/* Filters */}
 
-      <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 space-y-4">
+        <div className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 space-y-4">
 
-        <div className="relative">
+         <div className="relative">
 
           <Search
             size={18}
@@ -305,6 +335,33 @@ const stats = {
 
           ))}
 
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 uppercase tracking-wide">Action</span>
+            <select
+              value={actionFilter}
+              onChange={(e) => setActionFilter(e.target.value)}
+              className="flex-1 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="ALL">All actions</option>
+              {ACTION_OPTIONS.map(action => (
+                <option key={action} value={action}>{action}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 uppercase tracking-wide">Consent ID</span>
+            <input
+              type="text"
+              value={consentFilter}
+              onChange={(e) => setConsentFilter(e.target.value)}
+              placeholder="Filter by consent UUID"
+              className="flex-1 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
         </div>
 
       </div>

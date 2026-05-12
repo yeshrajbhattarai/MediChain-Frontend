@@ -24,5 +24,14 @@ export const getHospitalPatients = () =>
 export const getHospitalPatient = (patientId) =>
   get(`/api/v1/staff/patients/${patientId}/`)
 
-export const getAuditLogs = (params = '') =>
-  get(`/api/logs/${params}`)
+export const getAuditLogs = (params = {}) => {
+  if (typeof params === 'string') {
+    return get(`/api/logs/${params}`)
+  }
+
+  const query = new URLSearchParams(
+    Object.entries(params).filter(([, value]) => value)
+  ).toString()
+
+  return get(`/api/logs/${query ? `?${query}` : ''}`)
+}

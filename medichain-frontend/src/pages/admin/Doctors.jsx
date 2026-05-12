@@ -6,7 +6,6 @@
 //   POST /api/v1/staff/doctors/<uuid>/  — toggle active / inactive
 
 import { useState, useEffect, useRef } from 'react'
-import { getProfile } from '../../auth_store/profileStore'
 import { fetchWithAuth } from '../../api/client'
 
 // mirrors the api() helper pattern from AdminProfile.jsx

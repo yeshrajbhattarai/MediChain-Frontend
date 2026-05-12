@@ -47,7 +47,7 @@ export default function DoctorDashboard() {
 
   const QUICK_LINKS = [
     { label: 'My Patients',      path: '/doctor/patients',     Icon: Users,        color: 'text-blue-600' },
-    { label: 'Approval Queue',   path: '/doctor/approval',     Icon: FileText,     color: 'text-emerald-600' },
+    { label: 'Approval Queue',   path: '/doctor/approval-queue', Icon: FileText,     color: 'text-emerald-600' },
     { label: 'Labs',             path: '/doctor/labs',         Icon: BarChart3,    color: 'text-amber-600' },
     { label: 'Profile',          path: '/doctor/profile',      Icon: Stethoscope,  color: 'text-gray-600' },
   ]
