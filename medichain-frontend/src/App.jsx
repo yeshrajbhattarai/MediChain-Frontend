@@ -17,6 +17,7 @@ import AdminDoctors     from './pages/admin/Doctors'
 import AdminNurses      from './pages/admin/Nurses'
 import AdminLabs        from './pages/admin/Labs'
 import AdminPatients    from './pages/admin/Patients'
+import AdminAuditLogs    from './pages/admin/AdminAuditLogs'
 
 import DoctorDashboard      from './pages/doctor/Dashboard'
 import DoctorProfile        from './pages/doctor/Profile'
@@ -80,6 +81,7 @@ export default function App() {
           <Route path="labs"        element={<AdminLabs />} />
           <Route path="consent"     element={<Consent />} />
           <Route path="profile"     element={<AdminProfile />} />
+          <Route path="audit-logs" element={<AdminAuditLogs />}/>
 
         </Route>
       </Route>

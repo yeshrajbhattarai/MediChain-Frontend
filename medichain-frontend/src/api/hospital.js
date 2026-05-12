@@ -24,3 +24,5 @@ export const getHospitalPatients = () =>
 export const getHospitalPatient = (patientId) =>
   get(`/api/v1/staff/patients/${patientId}/`)
 
+export const getAuditLogs = (params = '') =>
+  get(`/api/logs/${params}`)

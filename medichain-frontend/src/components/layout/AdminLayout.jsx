@@ -15,6 +15,7 @@ const ADMIN_NAV = [
   { label: 'Labs',        path: '/admin/labs',        icon: 'https://cdn.lordicon.com/nfuackpv.json' },
   { label: 'Consent',     path: '/admin/consent',     icon: 'https://cdn.lordicon.com/xovdoewm.json' }, // ← single item
   { label: 'Profile',     path: '/admin/profile',     icon: 'https://cdn.lordicon.com/bgebyztw.json' },
+  {label: 'Audit Logs', path: '/admin/audit-logs', icon: 'https://cdn.lordicon.com/ygvjgdmk.json'}
 ]
 
 export default function AdminLayout() {

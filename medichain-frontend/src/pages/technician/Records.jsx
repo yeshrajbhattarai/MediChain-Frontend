@@ -149,24 +149,68 @@ function RecordDetailModal({ recordId, listRecord, open, onClose, onUpdated }) {
     }
   }
 
-  // ── View content ──────────────────────────────────────────────────────────────
 
-  const ViewContent = () => (
-    <div className="space-y-5">
-      {/* Patient / lab header */}
-      <div className="p-4 bg-purple-50 rounded-xl border border-purple-100 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-base font-semibold text-gray-900">{listRecord?.patient_name || '—'}</p>
-          <p className="text-sm text-purple-600 font-medium mt-0.5">{listRecord?.lab_name || '—'}</p>
+  // ── Layout ─────────────────────────────────────────────────────────────────────
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
+        style={{ animation: 'modalIn .18s cubic-bezier(.22,1,.36,1)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
+          <div className="flex items-center gap-3">
+            {step === 'edit' && (
+              <button
+                onClick={() => setStep('view')}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400
+                           hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                ←
+              </button>
+            )}
+            <h2 className="text-base font-semibold text-gray-900">
+              {step === 'edit' ? 'Edit Record' : 'Medical Record Details'}
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400
+                       hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            ✕
+          </button>
         </div>
-        <span className="px-2.5 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700 rounded-full shrink-0">
-          v{ver}
-        </span>
-      </div>
 
-      {/* Tab switcher */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-0.5 w-fit">
-        {['details', 'history'].map(t => (
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-6 py-5">
+          {loading ? (
+            <Spinner />
+          ) : step === 'view' ? (
+
+            <div className="space-y-5">
+
+              <div className="space-y-5">
+    {/* Patient / lab header */}
+    <div className="p-4 bg-purple-50 rounded-xl border border-purple-100 flex items-start justify-between gap-3">
+      <div>
+        <p className="text-base font-semibold text-gray-900">{listRecord?.patient_name || '—'}</p>
+        <p className="text-sm text-purple-600 font-medium mt-0.5">{listRecord?.lab_name || '—'}</p>
+      </div>
+      <span className="px-2.5 py-0.5 text-xs font-semibold bg-purple-100 text-purple-700 rounded-full shrink-0">
+        v{ver}
+      </span>
+    </div>
+
+    {/* Tab switcher */}
+    <div className="flex gap-1 bg-gray-100 rounded-xl p-0.5 w-fit">
+         {['details', 'history'].map(t => (
           <button
             key={t}
             onClick={() => setActiveTab(t)}
@@ -278,12 +322,14 @@ function RecordDetailModal({ recordId, listRecord, open, onClose, onUpdated }) {
         </div>
       )}
     </div>
-  )
 
-  // ── Edit content ──────────────────────────────────────────────────────────────
+            </div>
 
-  const EditContent = () => (
-    <div className="space-y-5">
+          ) : (
+
+            <div className="space-y-5">
+
+                 <div className="space-y-5">
       {/* Patient strip */}
       <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-100">
         <div className="w-9 h-9 rounded-lg bg-purple-100 text-purple-700 font-bold text-sm flex items-center justify-center shrink-0">
@@ -393,49 +439,10 @@ function RecordDetailModal({ recordId, listRecord, open, onClose, onUpdated }) {
         />
       </div>
     </div>
-  )
 
-  // ── Layout ─────────────────────────────────────────────────────────────────────
+            </div>
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col"
-        style={{ animation: 'modalIn .18s cubic-bezier(.22,1,.36,1)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
-          <div className="flex items-center gap-3">
-            {step === 'edit' && (
-              <button
-                onClick={() => setStep('view')}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-400
-                           hover:text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                ←
-              </button>
-            )}
-            <h2 className="text-base font-semibold text-gray-900">
-              {step === 'edit' ? 'Edit Record' : 'Medical Record Details'}
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400
-                       hover:text-gray-700 hover:bg-gray-100 transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="overflow-y-auto flex-1 px-6 py-5">
-          {loading ? <Spinner /> : step === 'view' ? <ViewContent /> : <EditContent />}
+          )}
         </div>
 
         {/* Footer */}

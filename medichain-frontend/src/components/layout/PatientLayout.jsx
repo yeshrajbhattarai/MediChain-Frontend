@@ -15,14 +15,12 @@ export default function PatientLayout() {
   const payload = getPayload()
 
   const patientName = payload?.patient_name || payload?.full_name || 'Patient'
-  const contextLabel = payload?.patient_id || ''
 
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar
         navItems={PATIENT_NAV}
         role="Patient"
-        hospitalName={contextLabel}
         open={open}
         setOpen={setOpen}
       />
