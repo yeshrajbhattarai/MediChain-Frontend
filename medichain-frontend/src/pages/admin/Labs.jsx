@@ -6,6 +6,8 @@
 //   POST /api/v1/staff/labs/<uuid>/assign-technician/        — assign technician
 //   POST /api/v1/staff/labs/<uuid>/remove-technician/<uuid>/ — remove technician
 
+
+import { LAB_TEMPLATES } from '../../data/LabTemplate'
 import { useState, useEffect, useRef } from 'react'
 import { fetchWithAuth } from '../../api/client'
 
@@ -18,7 +20,6 @@ const api = (url, opts = {}) =>
     },
   })
 
-// Auto-generates a snake_case key from the field label
 function slugify(value) {
   return (value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
@@ -74,46 +75,38 @@ function Modal({ open, onClose, title, children, width = 'max-w-lg' }) {
 // ─── Field Type config ────────────────────────────────────────────────────────
 
 const FIELD_TYPES = [
-  { value: 'text',     label: 'Text',        hint: 'Short text answer'         },
-  { value: 'textarea', label: 'Long Text',   hint: 'Multi-line text'           },
-  { value: 'integer',  label: 'Integer',     hint: 'Whole number (e.g. 120)'   },
-  { value: 'decimal',  label: 'Decimal',     hint: 'Number with decimals'      },
-  { value: 'date',     label: 'Date',        hint: 'Date picker'               },
-  { value: 'boolean',  label: 'Yes / No',    hint: 'Toggle or checkbox'        },
-  { value: 'choice',   label: 'Choice',      hint: 'Dropdown selection'        },
+  { value: 'text',     label: 'Text',      hint: 'Short text answer'       },
+  { value: 'textarea', label: 'Long Text', hint: 'Multi-line text'         },
+  { value: 'integer',  label: 'Integer',   hint: 'Whole number (e.g. 120)' },
+  { value: 'decimal',  label: 'Decimal',   hint: 'Number with decimals'    },
+  { value: 'date',     label: 'Date',      hint: 'Date picker'             },
+  { value: 'boolean',  label: 'Yes / No',  hint: 'Toggle or checkbox'      },
+  { value: 'choice',   label: 'Choice',    hint: 'Dropdown selection'      },
 ]
 
 const TYPE_ICONS = {
-  text:     '📝',
-  textarea: '📄',
-  integer:  '🔢',
-  decimal:  '🔢',
-  date:     '📅',
-  boolean:  '☑️',
-  choice:   '📋',
+  text: '', textarea: '', integer: '', decimal: '',
+  date: '', boolean: '', choice: '',
 }
 
-// ─── Field Builder (used inside Create Lab modal) ─────────────────────────────
-// Each field has: { _id (local only), label, key, type, required }
-// _id is never sent to backend — just for React keys and deletion
+// ─── Field Builder ─────────────────────────────────────────────────────────────
 
-function FieldBuilder({ fields, onChange }) {
+function FieldBuilder({ fields = [], onChange }) {
   function addField() {
     onChange([
-      ...fields,
-      { _id: Date.now(), label: '', key: '', type: 'text', required: false },
+      ...(fields || []),
+      { _id: Date.now(), label: '', key: '', type: 'text', required: false, options: [] },
     ])
   }
 
   function removeField(id) {
-    onChange(fields.filter(f => f._id !== id))
+    onChange((fields || []).filter(f => f._id !== id))
   }
 
   function updateField(id, patch) {
-    onChange(fields.map(f => {
+    onChange((fields || []).map(f => {
       if (f._id !== id) return f
       const updated = { ...f, ...patch }
-      // Auto-update key when label changes (unless key was manually edited)
       if (patch.label !== undefined && !f._keyManuallyEdited) {
         updated.key = slugify(patch.label)
       }
@@ -128,21 +121,12 @@ function FieldBuilder({ fields, onChange }) {
   return (
     <div className="space-y-3">
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-700">Report Fields</p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Define what data the technician fills in for each report.
-          </p>
-        </div>
-        <button
-          onClick={addField}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-600
-                     text-white rounded-lg hover:bg-blue-700 active:scale-95 transition-all"
-        >
-          + Add Field
-        </button>
+      {/* Section header — label only, no button here */}
+      <div>
+        <p className="text-sm font-medium text-gray-700">Report Fields</p>
+        <p className="text-xs text-gray-400 mt-0.5">
+          Define what data the technician fills in for each report.
+        </p>
       </div>
 
       {/* Empty state */}
@@ -151,7 +135,7 @@ function FieldBuilder({ fields, onChange }) {
           <p className="text-2xl mb-1">📋</p>
           <p className="text-sm text-gray-500 font-medium">No fields defined yet</p>
           <p className="text-xs text-gray-400 mt-0.5">
-            Click "Add Field" to define what the technician fills in.
+            Click "Add Field" below to get started.
           </p>
         </div>
       )}
@@ -180,8 +164,7 @@ function FieldBuilder({ fields, onChange }) {
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Label *</label>
               <input
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none
-                           focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors bg-white"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors bg-white"
                 placeholder="e.g. Serum Creatinine"
                 value={field.label}
                 onChange={e => updateField(field._id, { label: e.target.value })}
@@ -190,8 +173,7 @@ function FieldBuilder({ fields, onChange }) {
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Type *</label>
               <select
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none
-                           focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors bg-white"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors bg-white"
                 value={field.type}
                 onChange={e => updateField(field._id, { type: e.target.value })}
               >
@@ -211,9 +193,7 @@ function FieldBuilder({ fields, onChange }) {
                 Key <span className="text-gray-400 font-normal">(auto-generated)</span>
               </label>
               <input
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none
-                           focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors
-                           bg-white font-mono text-gray-500"
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors bg-white font-mono text-gray-500"
                 placeholder="auto"
                 value={field.key}
                 onChange={e => updateField(field._id, { key: e.target.value })}
@@ -224,25 +204,55 @@ function FieldBuilder({ fields, onChange }) {
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <div
                   onClick={() => updateField(field._id, { required: !field.required })}
-                  className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0
-                    ${field.required ? 'bg-blue-600' : 'bg-gray-300'}`}
+                  className={`w-9 h-5 rounded-full transition-colors relative flex-shrink-0 ${field.required ? 'bg-blue-600' : 'bg-gray-300'}`}
                 >
-                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform
-                    ${field.required ? 'translate-x-4' : 'translate-x-0.5'}`}
-                  />
+                  <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${field.required ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </div>
                 <span className="text-sm text-gray-700 font-medium">Required</span>
               </label>
             </div>
           </div>
+
+          {/* Choice Options — only when type === 'choice', inside map so field is in scope */}
+          {field.type === 'choice' && (
+            <div>
+              <label className="text-xs font-medium text-gray-500 mb-1 block">
+                Choice Options
+              </label>
+              <input
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 transition-colors bg-white"
+                placeholder="normal, abnormal"
+                value={(field.options || []).join(', ')}
+                onChange={e =>
+                  updateField(field._id, {
+                    options: e.target.value
+                      .split(',')
+                      .map(v => v.trim())
+                      .filter(Boolean),
+                  })
+                }
+              />
+              <p className="text-xs text-gray-400 mt-1">Separate values using commas.</p>
+            </div>
+          )}
         </div>
       ))}
+
+      {/* Add Field button — always below the last field, never at the top */}
+      <button
+        onClick={addField}
+        className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-semibold
+                   border-2 border-dashed border-blue-200 text-blue-600 rounded-xl
+                   hover:border-blue-400 hover:bg-blue-50 active:scale-[0.98] transition-all"
+      >
+        + Add Field
+      </button>
 
       {/* Field count summary */}
       {fields.length > 0 && (
         <p className="text-xs text-gray-400 text-right">
           {fields.length} field{fields.length !== 1 ? 's' : ''} ·{' '}
-          {fields.filter(f => f.required).length} required
+          {(fields || []).filter(f => f.required).length} required
         </p>
       )}
     </div>
@@ -250,28 +260,25 @@ function FieldBuilder({ fields, onChange }) {
 }
 
 // ─── Create Lab Modal (2-step) ─────────────────────────────────────────────────
-// Step 1: Lab name + type
-// Step 2: Field builder — define custom_field_schema
-// Both are submitted together in one POST on final step
 
 const LAB_TYPES = [
-  { label: 'Pathology',    value: 'pathology'    },
-  { label: 'Radiology',    value: 'radiology'    },
-  { label: 'Cardiology',   value: 'cardiology'   },
-  { label: 'Microbiology', value: 'microbiology' },
-  { label: 'Biochemistry', value: 'biochemistry' },
-  { label: 'Hematology',   value: 'hematology'   },
+  { label: 'Chronic Kidney Disease', value: 'ckd'          },
+  { label: 'Pathology',              value: 'pathology'    },
+  { label: 'Radiology',              value: 'radiology'    },
+  { label: 'Cardiology',             value: 'cardiology'   },
+  { label: 'Microbiology',           value: 'microbiology' },
+  { label: 'Biochemistry',           value: 'biochemistry' },
+  { label: 'Hematology',             value: 'hematology'   },
 ]
 
 function CreateLabModal({ open, onClose, onCreated }) {
-  const [step,    setStep]    = useState(1)   // 1 = basic info, 2 = field builder
+  const [step,    setStep]    = useState(1)
   const [form,    setForm]    = useState({ lab_type: '', name: '' })
   const [fields,  setFields]  = useState([])
   const [errors,  setErrors]  = useState({})
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState('')
 
-  // Reset everything when modal opens/closes
   useEffect(() => {
     if (open) {
       setStep(1); setForm({ lab_type: '', name: '' })
@@ -284,7 +291,6 @@ function CreateLabModal({ open, onClose, onCreated }) {
     setErrors(e => ({ ...e, [key]: undefined }))
   }
 
-  // Validate step 1 before advancing
   function handleNext() {
     const errs = {}
     if (!form.lab_type) errs.lab_type = 'Select a lab type.'
@@ -293,9 +299,7 @@ function CreateLabModal({ open, onClose, onCreated }) {
     setStep(2)
   }
 
-  // Validate fields and submit
   async function handleSubmit() {
-    // Validate each field has a label and key
     const errs = {}
     fields.forEach((f, i) => {
       if (!f.label.trim()) errs[`field_${i}_label`] = `Field ${i + 1} needs a label.`
@@ -303,9 +307,8 @@ function CreateLabModal({ open, onClose, onCreated }) {
     })
     if (Object.keys(errs).length) { setErrors(errs); return }
 
-    // Strip _id and _keyManuallyEdited — backend doesn't want those
-    const schema = fields.map(({ label, key, type, required }) => ({
-      label, key, type, required,
+    const schema = fields.map(({ label, key, type, required, options }) => ({
+      label, key, type, required, options: options || [],
     }))
 
     setLoading(true); setErrors({}); setSuccess('')
@@ -317,7 +320,7 @@ function CreateLabModal({ open, onClose, onCreated }) {
       const data = await res.json()
       if (!res.ok) {
         setErrors(data.errors || { general: 'Something went wrong.' })
-        setStep(1)  // go back to step 1 on error
+        setStep(1)
         return
       }
       setSuccess(`Lab "${data.name}" created successfully.`)
@@ -328,12 +331,12 @@ function CreateLabModal({ open, onClose, onCreated }) {
   }
 
   const inp = key =>
-    `w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors
-     ${errors[key]
-       ? 'border-red-400 bg-red-50'
-       : 'border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'}`
+    `w-full px-3 py-2 text-sm border rounded-lg outline-none transition-colors ${
+      errors[key]
+        ? 'border-red-400 bg-red-50'
+        : 'border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100'
+    }`
 
-  // Check if any field validation errors exist
   const hasFieldErrors = Object.keys(errors).some(k => k.startsWith('field_'))
 
   return (
@@ -345,11 +348,7 @@ function CreateLabModal({ open, onClose, onCreated }) {
           {[1, 2].map(s => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors
-                ${step === s
-                  ? 'bg-blue-600 text-white'
-                  : step > s
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-gray-200 text-gray-500'}`}
+                ${step === s ? 'bg-blue-600 text-white' : step > s ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'}`}
               >
                 {step > s ? '✓' : s}
               </div>
@@ -361,7 +360,6 @@ function CreateLabModal({ open, onClose, onCreated }) {
           ))}
         </div>
 
-        {/* Global messages */}
         {errors.general && (
           <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-lg border border-red-200">
             {errors.general}
@@ -373,7 +371,6 @@ function CreateLabModal({ open, onClose, onCreated }) {
           </div>
         )}
 
-        {/* ── Step 1: Basic Info ── */}
         {step === 1 && (
           <div className="space-y-4">
             <div>
@@ -386,7 +383,6 @@ function CreateLabModal({ open, onClose, onCreated }) {
               </select>
               {errors.lab_type && <p className="text-xs text-red-500 mt-0.5">{errors.lab_type}</p>}
             </div>
-
             <div>
               <label className="text-xs font-medium text-gray-600 mb-1 block">Lab Name *</label>
               <input
@@ -398,43 +394,50 @@ function CreateLabModal({ open, onClose, onCreated }) {
               />
               {errors.name && <p className="text-xs text-red-500 mt-0.5">{errors.name}</p>}
             </div>
-
             <div className="flex gap-2 pt-1">
-              <button
-                onClick={onClose}
-                className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={onClose} className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
                 Cancel
               </button>
-              <button
-                onClick={handleNext}
-                className="flex-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
+              <button onClick={handleNext} className="flex-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
                 Next: Define Fields →
               </button>
             </div>
           </div>
         )}
 
-        {/* ── Step 2: Field Builder ── */}
         {step === 2 && (
           <div className="space-y-4">
-            {/* Summary of step 1 */}
             <div className="flex items-center gap-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg">
               <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-base flex-shrink-0">🔬</div>
               <div>
                 <p className="text-sm font-medium text-blue-900">{form.name}</p>
                 <p className="text-xs text-blue-600 capitalize">{form.lab_type}</p>
               </div>
-              <button
-                onClick={() => setStep(1)}
-                className="ml-auto text-xs text-blue-500 hover:text-blue-700 font-medium"
-              >
+              <button onClick={() => setStep(1)} className="ml-auto text-xs text-blue-500 hover:text-blue-700 font-medium">
                 ← Edit
               </button>
+             
+            </div>
+            <div className="space-y-4">
+               {form.lab_type === 'ckd' && (
+                <button
+        
+                  type="button"
+                  onClick={() => {
+                    setFields(
+                      LAB_TEMPLATES.ckd.map(field => ({
+                        ...field,
+                        _id: crypto.randomUUID(),
+                      }))
+                    )
+                  }}
+                  className="ml-auto text-xs text-blue-500 hover:text-blue-700 font-medium"
+                >
+                  Use CKD Predefined Fields
+                </button>
+              )}
             </div>
 
-            {/* Field validation errors summary */}
             {hasFieldErrors && (
               <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-lg border border-red-200">
                 Some fields are missing labels or keys. Please fill them in.
@@ -444,10 +447,7 @@ function CreateLabModal({ open, onClose, onCreated }) {
             <FieldBuilder fields={fields} onChange={setFields} />
 
             <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setStep(1)}
-                className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-              >
+              <button onClick={() => setStep(1)} className="flex-1 px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
                 ← Back
               </button>
               <button
@@ -460,7 +460,7 @@ function CreateLabModal({ open, onClose, onCreated }) {
             </div>
 
             <p className="text-xs text-gray-400 text-center">
-              Fields can not be changed after creation — they define the database table structure.
+              Fields cannot be changed after creation — they define the database table structure.
             </p>
           </div>
         )}
@@ -479,7 +479,7 @@ function LabDetailModal({ lab, open, onClose }) {
   const [assigning,   setAssigning]   = useState(false)
   const [removing,    setRemoving]    = useState(null)
   const [msg,         setMsg]         = useState('')
-  const [activeTab,   setActiveTab]   = useState('technicians')  // 'technicians' | 'schema'
+  const [activeTab,   setActiveTab]   = useState('technicians')
   const hasFetched = useRef(false)
 
   useEffect(() => {
@@ -546,24 +546,18 @@ function LabDetailModal({ lab, open, onClose }) {
     <Modal open={open} onClose={handleClose} title="Lab Details" width="max-w-xl">
       {loading ? <Spinner /> : (
         <div className="space-y-5">
-
-          {/* Lab header */}
           <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-            <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-2xl flex-shrink-0">
-              🔬
-            </div>
+            <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center text-2xl flex-shrink-0">🔬</div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-gray-900">{d.name}</p>
               <p className="text-sm text-gray-500 capitalize">{d.lab_type}</p>
-              <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1 px-2 py-0.5 rounded-full
-                ${d.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+              <span className={`inline-flex items-center gap-1 text-xs font-medium mt-1 px-2 py-0.5 rounded-full ${d.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${d.is_active ? 'bg-emerald-500' : 'bg-red-400'}`} />
                 {d.is_active ? 'Active' : 'Inactive'}
               </span>
             </div>
           </div>
 
-          {/* Stats row */}
           {detail && (
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-amber-50 rounded-xl p-3 text-center">
@@ -581,20 +575,17 @@ function LabDetailModal({ lab, open, onClose }) {
             </div>
           )}
 
-          {/* Tabs */}
           <div className="border-b border-gray-200">
             <div className="flex gap-1">
               {[
-                { key: 'technicians', label: '👥 Technicians' },
-                { key: 'schema',      label: '📋 Report Fields' },
+                { key: 'technicians', label: 'Technicians'   },
+                { key: 'schema',      label: 'Report Fields' },
               ].map(tab => (
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
                   className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px
-                    ${activeTab === tab.key
-                      ? 'text-blue-600 border-blue-600'
-                      : 'text-gray-500 hover:text-gray-700 border-transparent'}`}
+                    ${activeTab === tab.key ? 'text-blue-600 border-blue-600' : 'text-gray-500 hover:text-gray-700 border-transparent'}`}
                 >
                   {tab.label}
                 </button>
@@ -602,14 +593,10 @@ function LabDetailModal({ lab, open, onClose }) {
             </div>
           </div>
 
-          {/* Tab: Technicians */}
           {activeTab === 'technicians' && (
             <div className="space-y-4">
-              {/* Assigned list */}
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  Assigned Technicians
-                </p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Assigned Technicians</p>
                 {(detail?.assignments || []).length === 0 ? (
                   <p className="text-sm text-gray-400 italic py-2">No technicians assigned yet.</p>
                 ) : (
@@ -638,12 +625,9 @@ function LabDetailModal({ lab, open, onClose }) {
                 )}
               </div>
 
-              {/* Assign dropdown */}
               {available.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                    Assign Technician
-                  </p>
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Assign Technician</p>
                   <div className="flex gap-2">
                     <select
                       className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
@@ -672,22 +656,17 @@ function LabDetailModal({ lab, open, onClose }) {
             </div>
           )}
 
-          {/* Tab: Report Fields / Schema */}
           {activeTab === 'schema' && (
             <div className="space-y-3">
               {schema.length === 0 ? (
                 <div className="text-center py-8 text-gray-400">
                   <p className="text-2xl mb-1">📋</p>
                   <p className="text-sm font-medium text-gray-500">No custom fields defined</p>
-                  <p className="text-xs mt-0.5">
-                    This lab only uses the default fields (age, gender, diagnosis, etc.)
-                  </p>
+                  <p className="text-xs mt-0.5">This lab only uses the default fields.</p>
                 </div>
               ) : (
                 <>
-                  <p className="text-xs text-gray-400">
-                    These fields were defined at creation and cannot be changed.
-                  </p>
+                  <p className="text-xs text-gray-400">These fields were defined at creation and cannot be changed.</p>
                   <div className="space-y-2">
                     {schema.map((field, i) => (
                       <div key={i} className="flex items-center justify-between px-3 py-2.5 bg-gray-50 rounded-lg border border-gray-100">
@@ -699,33 +678,24 @@ function LabDetailModal({ lab, open, onClose }) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full capitalize">
-                            {field.type}
-                          </span>
+                          <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full capitalize">{field.type}</span>
                           {field.required && (
-                            <span className="text-xs bg-red-50 text-red-600 ring-1 ring-red-200 px-2 py-0.5 rounded-full">
-                              Required
-                            </span>
+                            <span className="text-xs bg-red-50 text-red-600 ring-1 ring-red-200 px-2 py-0.5 rounded-full">Required</span>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
                   <p className="text-xs text-gray-400 text-right">
-                    {schema.length} field{schema.length !== 1 ? 's' : ''} ·{' '}
-                    {schema.filter(f => f.required).length} required
+                    {schema.length} field{schema.length !== 1 ? 's' : ''} · {schema.filter(f => f.required).length} required
                   </p>
                 </>
               )}
             </div>
           )}
 
-          {/* Close button */}
           <div className="pt-1 border-t border-gray-100">
-            <button
-              onClick={handleClose}
-              className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-            >
+            <button onClick={handleClose} className="w-full px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors">
               Close
             </button>
           </div>
@@ -738,6 +708,7 @@ function LabDetailModal({ lab, open, onClose }) {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 const LAB_TYPE_COLOR = {
+  ckd:          'bg-cyan-50 text-cyan-700',
   pathology:    'bg-rose-50 text-rose-700',
   radiology:    'bg-violet-50 text-violet-700',
   cardiology:   'bg-red-50 text-red-700',
@@ -747,12 +718,12 @@ const LAB_TYPE_COLOR = {
 }
 
 export default function Labs() {
-  const [labs,        setLabs]        = useState([])
-  const [loading,     setLoading]     = useState(true)
-  const [search,      setSearch]      = useState('')
-  const [showCreate,  setShowCreate]  = useState(false)
-  const [selected,    setSelected]    = useState(null)
-  const [showDetail,  setShowDetail]  = useState(false)
+  const [labs,       setLabs]       = useState([])
+  const [loading,    setLoading]    = useState(true)
+  const [search,     setSearch]     = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+  const [selected,   setSelected]   = useState(null)
+  const [showDetail, setShowDetail] = useState(false)
   const hasFetched = useRef(false)
 
   useEffect(() => {
@@ -766,8 +737,6 @@ export default function Labs() {
     try {
       const res  = await api('/staff/labs/')
       const data = await res.json()
-      // API returns array of { lab, technicians_count, pending_count, completed_count }
-      // Flatten for table display
       const flat = Array.isArray(data)
         ? data.map(row => ({ ...row.lab, _counts: { tech: row.technicians_count, pending: row.pending_count, completed: row.completed_count } }))
         : []
@@ -777,7 +746,6 @@ export default function Labs() {
   }
 
   function handleCreated(lab) {
-    // lab from POST response is a flat LabSerializer object
     setLabs(prev => [{ ...lab, _counts: { tech: 0, pending: 0, completed: 0 } }, ...prev])
   }
 
@@ -790,14 +758,10 @@ export default function Labs() {
 
   return (
     <div className="space-y-6">
-
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Labs</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {labs.length} lab{labs.length !== 1 ? 's' : ''} registered
-          </p>
+          <p className="text-sm text-gray-400 mt-0.5">{labs.length} lab{labs.length !== 1 ? 's' : ''} registered</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
@@ -807,7 +771,6 @@ export default function Labs() {
         </button>
       </div>
 
-      {/* Search */}
       <div className="relative max-w-sm">
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
         <input
@@ -818,15 +781,12 @@ export default function Labs() {
         />
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? <Spinner /> : visible.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <p className="text-3xl mb-2">🔬</p>
             <p className="font-medium text-gray-600">No labs found</p>
-            <p className="text-sm mt-1">
-              {search ? 'Try a different search term.' : 'Create your first lab to get started.'}
-            </p>
+            <p className="text-sm mt-1">{search ? 'Try a different search term.' : 'Create your first lab to get started.'}</p>
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -841,16 +801,10 @@ export default function Labs() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {visible.map(lab => (
-                <tr
-                  key={lab.id}
-                  className="hover:bg-indigo-50/40 transition-colors cursor-pointer group"
-                  onClick={() => openDetail(lab)}
-                >
+                <tr key={lab.id} className="hover:bg-indigo-50/40 transition-colors cursor-pointer group" onClick={() => openDetail(lab)}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-base flex-shrink-0">
-                        🔬
-                      </div>
+                      <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-base flex-shrink-0">🔬</div>
                       <div className="min-w-0">
                         <p className="font-medium text-gray-900 truncate">{lab.name}</p>
                         <p className="text-xs text-gray-400">{lab.hospital_name}</p>
@@ -858,8 +812,7 @@ export default function Labs() {
                     </div>
                   </td>
                   <td className="px-5 py-3.5 hidden md:table-cell">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize
-                      ${LAB_TYPE_COLOR[lab.lab_type] || 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${LAB_TYPE_COLOR[lab.lab_type] || 'bg-gray-100 text-gray-600'}`}>
                       {lab.lab_type}
                     </span>
                   </td>
@@ -869,10 +822,7 @@ export default function Labs() {
                     </span>
                   </td>
                   <td className="px-5 py-3.5">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium
-                      ${lab.is_active
-                        ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                        : 'bg-red-50 text-red-600 ring-1 ring-red-200'}`}>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${lab.is_active ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-red-50 text-red-600 ring-1 ring-red-200'}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${lab.is_active ? 'bg-emerald-500' : 'bg-red-400'}`} />
                       {lab.is_active ? 'Active' : 'Inactive'}
                     </span>
@@ -893,21 +843,11 @@ export default function Labs() {
       </div>
 
       {!loading && visible.length > 0 && (
-        <p className="text-xs text-gray-400 text-right">
-          Showing {visible.length} of {labs.length} labs
-        </p>
+        <p className="text-xs text-gray-400 text-right">Showing {visible.length} of {labs.length} labs</p>
       )}
 
-      <CreateLabModal
-        open={showCreate}
-        onClose={() => setShowCreate(false)}
-        onCreated={handleCreated}
-      />
-      <LabDetailModal
-        lab={selected}
-        open={showDetail}
-        onClose={() => { setShowDetail(false); setSelected(null) }}
-      />
+      <CreateLabModal open={showCreate} onClose={() => setShowCreate(false)} onCreated={handleCreated} />
+      <LabDetailModal lab={selected} open={showDetail} onClose={() => { setShowDetail(false); setSelected(null) }} />
     </div>
   )
 }

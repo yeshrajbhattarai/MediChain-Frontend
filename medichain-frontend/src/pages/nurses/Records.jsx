@@ -1,5 +1,4 @@
 // src/pages/nurse/Records.jsx
-// FIXED: Breadcrumbs, better UX, improved modal, error handling
 
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -10,21 +9,67 @@ import {
   X,
   ArrowUpRight,
   CalendarDays,
+  Printer,
   Activity,
+  Thermometer,
+  Heart,
+  Wind,
+  ChevronRight,
+  Building2,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import { getNurseMedicalRecords } from '../../api/nurse'
 
+// ── Vital card ─────────────────────────────────────────────────────────────────
+function VitalCard({ icon: Icon, label, value }) {
+  return (
+    <div className="flex flex-col gap-1 bg-gray-50 rounded-xl p-3 border border-gray-100">
+      <div className="flex items-center gap-1.5 text-gray-400">
+        <Icon size={13} />
+        <span className="text-[11px] font-medium uppercase tracking-wide">{label}</span>
+      </div>
+      <p className="text-base font-semibold text-gray-800">{value || '—'}</p>
+    </div>
+  )
+}
+
+// ── Field block ────────────────────────────────────────────────────────────────
+function Field({ label, value }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">
+        {label}
+      </p>
+      <p className="text-sm text-gray-700 leading-relaxed bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+        {value || '—'}
+      </p>
+    </div>
+  )
+}
+
+// ── Badge ──────────────────────────────────────────────────────────────────────
+function Badge({ children, variant = 'green' }) {
+  const styles = {
+    green: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    blue:  'bg-blue-50 text-blue-700 border-blue-200',
+    teal:  'bg-teal-50 text-teal-700 border-teal-200',
+  }
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${styles[variant]}`}>
+      {children}
+    </span>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
 export default function Records() {
-  const [records, setRecords] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
+  const [records, setRecords]           = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [error, setError]               = useState('')
+  const [search, setSearch]             = useState('')
   const [selectedRecord, setSelectedRecord] = useState(null)
 
-  useEffect(() => {
-    loadRecords()
-  }, [])
+  useEffect(() => { loadRecords() }, [])
 
   async function loadRecords() {
     try {
@@ -33,7 +78,6 @@ export default function Records() {
       const data = await getNurseMedicalRecords()
       setRecords(Array.isArray(data) ? data : [])
     } catch (err) {
-      console.error(err)
       setError(err.message || 'Failed to load records')
       setRecords([])
     } finally {
@@ -41,37 +85,37 @@ export default function Records() {
     }
   }
 
-  const filteredRecords = useMemo(() => {
-    return records.filter((record) => {
-      const q = search.toLowerCase()
-      return (
-        record?.patient?.full_name?.toLowerCase().includes(q) ||
-        record?.primary_diagnosis?.toLowerCase().includes(q) ||
-        record?.title?.toLowerCase().includes(q)
-      )
-    })
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return records.filter(r =>
+      r?.patient?.full_name?.toLowerCase().includes(q) ||
+      r?.primary_diagnosis?.toLowerCase().includes(q) ||
+      r?.title?.toLowerCase().includes(q)
+    )
   }, [records, search])
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* ── Header ── */}
       <PageHeader
-        title="Finalized Records"
+        title="Finalized records"
         subtitle="View completed nursing assessments and patient summaries"
         breadcrumbs={[
-          { label: 'Nurse Portal', href: '/nurse/dashboard' },
+          { label: 'Nurse portal', href: '/nurse/dashboard' },
           { label: 'Records' },
         ]}
       />
 
-      {/* ERROR STATE */}
+      {/* ── Error ── */}
       {error && (
-        <div className="mb-6 flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl p-4">
-          <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
+          <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-red-900">{error}</p>
+            <p className="text-sm font-medium text-red-800">{error}</p>
             <button
               onClick={loadRecords}
-              className="text-xs text-red-600 hover:text-red-700 font-medium mt-2"
+              className="text-xs text-red-600 hover:text-red-700 font-medium mt-1.5"
             >
               Try again
             </button>
@@ -79,119 +123,88 @@ export default function Records() {
         </div>
       )}
 
-      {/* SEARCH */}
-      <div className="relative mb-6">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+      {/* ── Search ── */}
+      <div className="relative">
+        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by patient, diagnosis or record title..."
-          className="
-            w-full
-            h-11
-            pl-11
-            pr-4
-            rounded-xl
-            border
-            border-gray-200
-            bg-white
-            text-sm
-            outline-none
-            focus:ring-2
-            focus:ring-blue-100
-            focus:border-blue-400
-          "
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by patient, diagnosis or record title…"
+          className="w-full h-10 pl-10 pr-4 text-sm rounded-xl border border-gray-200 bg-white outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 placeholder:text-gray-400 transition"
         />
       </div>
 
-      {/* LOADING STATE */}
+      {/* ── Loading ── */}
       {loading && (
-        <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <Loader size={22} className="text-emerald-500 animate-spin" />
+          <p className="text-sm text-gray-400">Loading records…</p>
+        </div>
+      )}
+
+      {/* ── Empty ── */}
+      {!loading && filtered.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 gap-3 bg-white border border-gray-100 rounded-2xl">
+          <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center">
+            <FileText size={20} className="text-gray-300" />
+          </div>
           <div className="text-center">
-            <Loader className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-500">Loading records...</p>
+            <p className="text-sm font-medium text-gray-700">
+              {search ? 'No records found' : 'No finalized records yet'}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              {search ? 'Try different keywords' : 'Completed records will appear here'}
+            </p>
           </div>
         </div>
       )}
 
-      {/* EMPTY STATE */}
-      {!loading && filteredRecords.length === 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-14 text-center">
-          <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-800">
-            {search ? 'No records found' : 'No finalized records yet'}
-          </h3>
-          <p className="text-sm text-gray-500 mt-2">
-            {search
-              ? 'Try searching with different keywords'
-              : 'Your completed nursing records will appear here'}
-          </p>
-        </div>
-      )}
-
-      {/* RECORDS GRID */}
-      {!loading && filteredRecords.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          {filteredRecords.map((record) => (
+      {/* ── Grid ── */}
+      {!loading && filtered.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          {filtered.map(record => (
             <button
               key={record.id}
               onClick={() => setSelectedRecord(record)}
               className="
-                text-left
-                bg-white
-                border
-                border-gray-200
-                rounded-2xl
-                p-6
-                hover:border-blue-300
-                hover:shadow-lg
-                transition-all
-                group
+                group text-left bg-white border border-gray-200
+                rounded-2xl p-5 hover:border-gray-300
+                hover:shadow-sm transition-all duration-150
               "
             >
-              <div className="flex items-start justify-between gap-4 mb-4">
+              {/* top row */}
+              <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-sm font-semibold text-gray-900">
-                      {record?.patient?.full_name || 'Unknown Patient'}
-                    </h3>
-                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-                      Completed
-                    </span>
-                    {record?.doctor_finalized && (
-                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                        Finalized
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="mt-3 text-sm font-medium text-gray-800">
-                    {record?.title || 'Medical Record'}
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {record?.patient?.full_name || 'Unknown patient'}
                   </p>
-
-                  <p className="mt-1 text-xs text-gray-500 line-clamp-2">
-                    {record?.primary_diagnosis || 'No diagnosis'}
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    {record?.title || 'Medical record'}
                   </p>
                 </div>
-
-                <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <FileText className="w-5 h-5 text-teal-600" />
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                  <FileText size={16} className="text-emerald-600" />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <CalendarDays className="w-4 h-4" />
+              {/* diagnosis */}
+              <p className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed">
+                {record?.primary_diagnosis || 'No diagnosis recorded'}
+              </p>
+
+              {/* footer */}
+              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge variant="green">Completed</Badge>
+                  {record?.doctor_finalized && <Badge variant="blue">Finalized</Badge>}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-gray-400 group-hover:text-emerald-600 transition-colors">
+                  <CalendarDays size={12} />
                   <span>
                     {record?.created_at
-                      ? new Date(record.created_at).toLocaleString('en-IN')
+                      ? new Date(record.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
                       : '—'}
                   </span>
-                </div>
-
-                <div className="flex items-center gap-1 text-blue-600 text-xs font-medium">
-                  View
-                  <ArrowUpRight className="w-3 h-3" />
                 </div>
               </div>
             </button>
@@ -199,134 +212,88 @@ export default function Records() {
         </div>
       )}
 
-      {/* MODAL */}
+      {/* ── Modal ── */}
       {selectedRecord && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden max-h-[90vh] flex flex-col">
-            {/* HEADER */}
-            <div className="px-6 sm:px-8 py-6 border-b border-gray-100 flex items-start justify-between">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900">
-                  {selectedRecord?.title || 'Medical Record'}
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+          onClick={() => setSelectedRecord(null)}
+        >
+          <div
+            className="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+
+            {/* Modal header */}
+            <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-gray-100">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-2">
+                  <Badge variant="green">Completed</Badge>
+                  {selectedRecord?.doctor_finalized && <Badge variant="blue">Finalized</Badge>}
+                </div>
+                <h2 className="text-base font-semibold text-gray-900 truncate">
+                  {selectedRecord?.title || 'Medical record'}
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Patient: {selectedRecord?.patient?.full_name || 'Unknown'}
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {selectedRecord?.patient?.full_name || 'Unknown patient'}
                 </p>
               </div>
-              <button
-                onClick={() => setSelectedRecord(null)}
-                className="
-                  w-10
-                  h-10
-                  rounded-xl
-                  hover:bg-gray-100
-                  flex
-                  items-center
-                  justify-center
-                  transition-all
-                "
-              >
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 transition"
+                >
+                  <Printer size={13} />
+                  Print
+                </button>
+                <button
+                  onClick={() => setSelectedRecord(null)}
+                  className="w-8 h-8 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition"
+                >
+                  <X size={15} className="text-gray-600" />
+                </button>
+              </div>
             </div>
 
-            {/* CONTENT */}
-            <div className="overflow-y-auto flex-1 px-6 sm:px-8 py-7 space-y-6">
-              {/* DIAGNOSIS */}
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Diagnosis
-                </p>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  {selectedRecord?.primary_diagnosis || 'No diagnosis available'}
-                </p>
+            {/* Modal body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5 flex flex-col gap-5">
+
+              {/* Vitals */}
+              <div className="grid grid-cols-4 gap-2">
+                <VitalCard icon={Activity}     label="BP"    value={selectedRecord?.blood_pressure} />
+                <VitalCard icon={Heart}        label="Pulse" value={selectedRecord?.pulse_rate ? `${selectedRecord.pulse_rate} bpm` : null} />
+                <VitalCard icon={Thermometer}  label="Temp"  value={selectedRecord?.temperature_c ? `${selectedRecord.temperature_c}°C` : null} />
+                <VitalCard icon={Wind}         label="SpO2"  value={selectedRecord?.spo2_percent ? `${selectedRecord.spo2_percent}%` : null} />
               </div>
 
-              {/* VITALS */}
-              {selectedRecord?.blood_pressure && (
-                <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">
-                    Patient Vitals
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {[
-                      ['Blood Pressure', selectedRecord.blood_pressure],
-                      ['Pulse Rate', selectedRecord.pulse_rate ? `${selectedRecord.pulse_rate} bpm` : '—'],
-                      ['Temperature', selectedRecord.temperature_c ? `${selectedRecord.temperature_c}°C` : '—'],
-                      ['SpO2', selectedRecord.spo2_percent ? `${selectedRecord.spo2_percent}%` : '—'],
-                    ].map(([label, value]) => (
-                      <div key={label} className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-xs text-gray-500 font-medium mb-2">{label}</p>
-                        <p className="text-sm font-semibold text-gray-900">{value}</p>
-                      </div>
-                    ))}
-                  </div>
+              {/* Clinical summary */}
+              <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-gray-900">Clinical summary</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Nursing observations and treatment overview</p>
                 </div>
-              )}
-
-              {/* NOTES */}
-              {[
-                ['Observation', selectedRecord?.nurse_observation],
-                ['Treatment', selectedRecord?.treatment_given],
-                ['Medications', selectedRecord?.medications_administered],
-                ['Follow-up', selectedRecord?.follow_up_notes],
-              ].map(
-                ([title, value]) =>
-                  value && (
-                    <div key={title}>
-                      <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                        {title}
-                      </p>
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-sm text-gray-700 leading-relaxed">{value}</p>
-                      </div>
-                    </div>
-                  )
-              )}
-
-              {/* FINALIZED STATUS */}
-              {selectedRecord?.doctor_finalized && (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
-                  <div className="flex items-start gap-3">
-                    <Activity className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-semibold text-emerald-900">Doctor Finalized</h4>
-                      <p className="text-sm text-emerald-700 mt-1">
-                        This record has been reviewed and approved by the doctor.
-                      </p>
-                      <p className="text-xs text-emerald-600 mt-3">
-                        Finalized: {selectedRecord?.doctor_finalized_at
-                          ? new Date(selectedRecord.doctor_finalized_at).toLocaleString('en-IN')
-                          : '—'}
-                      </p>
-                    </div>
+                <div className="px-5 py-4 flex flex-col gap-4">
+                  <Field label="Diagnosis"        value={selectedRecord?.primary_diagnosis} />
+                  <Field label="Nurse observation" value={selectedRecord?.nurse_observation} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Treatment given" value={selectedRecord?.treatment_given} />
+                    <Field label="Medications"     value={selectedRecord?.medications_administered} />
                   </div>
+                  <Field label="Follow-up notes"  value={selectedRecord?.follow_up_notes} />
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* FOOTER */}
-            <div className="border-t border-gray-100 px-6 sm:px-8 py-4 flex justify-end">
-              <button
-                onClick={() => setSelectedRecord(null)}
-                className="
-                  px-5
-                  py-2.5
-                  rounded-lg
-                  bg-gray-100
-                  hover:bg-gray-200
-                  text-sm
-                  font-medium
-                  text-gray-900
-                  transition-all
-                "
-              >
-                Close
-              </button>
+              {/* Timestamp */}
+              <p className="text-[11px] text-gray-400 text-right">
+                {selectedRecord?.created_at
+                  ? `Record created: ${new Date(selectedRecord.created_at).toLocaleString('en-IN')}`
+                  : ''}
+              </p>
+
             </div>
           </div>
         </div>
       )}
+
     </div>
   )
 }

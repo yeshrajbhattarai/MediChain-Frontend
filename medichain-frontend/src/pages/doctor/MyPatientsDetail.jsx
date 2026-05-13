@@ -88,6 +88,27 @@ function NurseAssignmentPanel({ detail, onRefresh }) {
     }
   }
 
+ async function handleUnassignNurse(nurseId) {
+  try {
+    const res = await api(
+      `/staff/doctor/patients/${detail.patient.id}/remove-assignment/${nurseId}/`,
+      {
+        method: 'POST',
+      }
+    )
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data?.message || 'Failed')
+    }
+
+    if (onRefresh) onRefresh()
+
+  } catch (err) {
+    console.error(err)
+  }
+}
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
       <div>
@@ -95,17 +116,37 @@ function NurseAssignmentPanel({ detail, onRefresh }) {
         {nurses.length === 0 ? (
           <p className="text-xs text-gray-400 italic">No nurses assigned</p>
         ) : (
-          <div className="space-y-1.5">
-            {nurses.map(n => (
-              <div key={n.id} className="flex items-center gap-2 text-xs">
-                <div className="w-5 h-5 rounded-full bg-purple-200 text-purple-700 flex items-center justify-center font-bold text-[10px]">
-                  {n.full_name?.[0]}
+            <div className="space-y-2">
+              {nurses.map(n => (
+                <div
+                  key={n.id}
+                  className="flex items-center justify-between p-2 rounded-lg border border-gray-100 bg-gray-50"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-purple-200 text-purple-700 flex items-center justify-center font-bold text-xs">
+                      {n.full_name?.[0]}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 truncate">
+                        {n.full_name}
+                      </p>
+
+                      <p className="text-[11px] text-gray-400">
+                        {n.employee_id}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleUnassignNurse(n.id)}
+                    className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                  >
+                    Remove
+                  </button>
                 </div>
-                <span className="text-gray-700 font-medium">{n.full_name}</span>
-                <span className="text-purple-500 text-xs">({n.employee_id})</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
         )}
       </div>
 
@@ -127,7 +168,7 @@ function NurseAssignmentPanel({ detail, onRefresh }) {
           disabled={assigning || !selectedNurse}
           className="px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors"
         >
-          {assigning ? '…' : '+'}
+          {assigning ? '…' : 'Assign'}
         </button>
       </div>
     </div>

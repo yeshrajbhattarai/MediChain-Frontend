@@ -3,6 +3,7 @@
 // Dedicated page for viewing and analyzing both medical records and lab reports
 
 import { useState, useEffect } from 'react'
+import CKDPredictionModal from './CKDPredictionModal'
 import {
   ShieldCheck,
   ShieldAlert,
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { fetchWithAuth } from '../../api/client'
+import { requestCkdPrediction } from '../../api/doctor'
 
 const api = (url, opts = {}) => fetchWithAuth(`/api/v1${url}`, {
   ...opts,
@@ -578,13 +580,35 @@ return (
 
         {schema.map(field => {
 
-          const snapshot = record.timeline?.[0]?.data_snapshot || []
+      const timelines = [...(record.timeline || [])]
+        .sort((a, b) => a.version_number - b.version_number)
 
-          const matched = snapshot.find(
-            item => item.label?.toLowerCase() === field.label?.toLowerCase()
-          )
+      let value = null
 
-          const value = matched?.value
+      for (const versionItem of timelines) {
+
+        if (versionItem.version_number > record.version) {
+          break
+        }
+
+        const snapshot = versionItem.data_snapshot || []
+
+        const matched = snapshot.find(
+          item =>
+            item.label?.toLowerCase() === field.label?.toLowerCase()
+        )
+
+        if (matched) {
+
+          if (matched.current_value !== undefined && matched.current_value !== null) {
+            value = matched.current_value
+          }
+
+          else if (matched.value !== undefined && matched.value !== null) {
+            value = matched.value
+          }
+        }
+      }
 
           const status = getValueStatus(value)
 
@@ -770,59 +794,6 @@ return (
 
   </div>
 )
-}
-// ── PREDICTION RESULT MODAL ───────────────────────────────────────────────────
-
-
-
-function PredictionResult({ prediction, onClose }) {
-  if (!prediction) return null
-
-  const riskLevel = prediction.risk_level || 'Unknown'
-  const confidence = Number(prediction.confidence || 0)
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 space-y-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Prediction Result</h3>
-            <p className="text-xs text-gray-400 mt-1">AI Analysis Complete</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
-        </div>
-
-        <div className="bg-gradient-to-br from-violet-50 to-indigo-50 border border-violet-200 rounded-lg p-4 space-y-3">
-          <div>
-            <p className="text-xs text-gray-500 uppercase font-semibold">Prediction</p>
-            <p className="text-gray-900 font-semibold">{prediction.prediction || 'N/A'}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-gray-500 uppercase font-semibold">Risk Level</p>
-              <p className={`text-sm font-bold ${riskLevel === 'High' ? 'text-red-700' : riskLevel === 'Medium' ? 'text-amber-700' : 'text-emerald-700'}`}>
-                {riskLevel}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase font-semibold">Confidence</p>
-              <p className="text-sm font-bold text-violet-700">{confidence.toFixed(1)}%</p>
-            </div>
-          </div>
-          {prediction.suggested_action && (
-            <div>
-              <p className="text-xs text-gray-500 uppercase font-semibold">Suggested Action</p>
-              <p className="text-sm text-gray-700">{prediction.suggested_action}</p>
-            </div>
-          )}
-        </div>
-
-        <button onClick={onClose} className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium rounded-lg transition-colors">
-          Close
-        </button>
-      </div>
-    </div>
-  )
 }
 
 
@@ -1017,10 +988,11 @@ setRecordType('medical')
       )}
 
       {/* Prediction Modal */}
-      <PredictionResult
-        prediction={predicting ? { prediction: 'Running...' } : prediction}
-        onClose={() => setPrediction(null)}
-      />
+    <CKDPredictionModal
+      prediction={prediction}
+      isLoading={predicting}
+      onClose={() => setPrediction(null)}
+    />
     </div>
   )
 }

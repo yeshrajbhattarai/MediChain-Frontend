@@ -251,7 +251,7 @@ function ApprovalModal({ item, open, onClose, onApproved }) {
               <div className="p-4 bg-red-50 border border-red-100 rounded-xl">
                 <p className="font-semibold text-red-900 mb-2">Reject Record</p>
                 <p className="text-sm text-red-700">
-                  The record will be returned to the technician for corrections. Provide a detailed
+                  The record will be returned to the nurse for corrections. Provide a detailed
                   reason so they know what to fix.
                 </p>
               </div>
