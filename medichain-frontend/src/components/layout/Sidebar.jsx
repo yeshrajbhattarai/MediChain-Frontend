@@ -1,17 +1,24 @@
-// Sidebar.jsx — only change: import clearProfile and call it on logout
-// Everything else is identical to your current Sidebar.jsx
-
 import { Link, useLocation } from 'react-router-dom'
-import { clearProfile } from '../../auth_store/profileStore'  // ← NEW
+import { clearProfile } from '../../auth_store/profileStore'
+import { confirmDialog } from '../../utils/alert'
 
 export default function Sidebar({ navItems = [], role = '', hospitalName = '', open, setOpen }) {
   const location = useLocation()
 
-  const handleLogout = () => {
-    localStorage.removeItem('access')
-    localStorage.removeItem('refresh')
-    clearProfile()                      // ← NEW: wipe profile on logout
-    window.location.href = '/login'
+  const handleLogout = async () => {
+    const isConfirmed = await confirmDialog(
+      'Logout?',
+      'You will need to sign in again to access your dashboard.',
+      'Logout',
+      true
+    )
+
+    if (isConfirmed) {
+      localStorage.removeItem('access')
+      localStorage.removeItem('refresh')
+      clearProfile()
+      window.location.href = '/login'
+    }
   }
 
   return (
@@ -26,7 +33,7 @@ export default function Sidebar({ navItems = [], role = '', hospitalName = '', o
         transform transition-transform duration-300 overflow-y-auto
         ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
-              <div className="px-5 py-5 border-b border-gray-100">
+        <div className="px-5 py-5 border-b border-gray-100">
           <div className="flex items-center gap-2 text-blue-600 font-semibold text-base">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">M</div>
             MediChain
@@ -42,11 +49,11 @@ export default function Sidebar({ navItems = [], role = '', hospitalName = '', o
         <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
           {navItems.map(item => {
             const isActive =
-  location.pathname === item.path ||
-  (
-    item.path !== '/doctor/dashboard' &&
-    location.pathname.startsWith(item.path + '/')
-  )
+              location.pathname === item.path ||
+              (
+                item.path !== '/doctor/dashboard' &&
+                location.pathname.startsWith(item.path + '/')
+              )
             return (
               <Link key={item.path} to={item.path}
                 onClick={() => setOpen && setOpen(false)}
@@ -68,18 +75,18 @@ export default function Sidebar({ navItems = [], role = '', hospitalName = '', o
         </nav>
 
         <div className="px-3 py-4 border-t border-gray-100">
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition"
-        >
-          <lord-icon
-            src="https://cdn.lordicon.com/xhdhjyqy.json"
-            trigger="loop"
-            colors="primary:#dc2626"
-            style={{ width: '20px', height: '20px' }}
-          />
-          Logout
-        </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition w-full"
+          >
+            <lord-icon
+              src="https://cdn.lordicon.com/xhdhjyqy.json"
+              trigger="loop"
+              colors="primary:#dc2626"
+              style={{ width: '20px', height: '20px' }}
+            />
+            Logout
+          </button>
         </div>
       </aside>
     </>

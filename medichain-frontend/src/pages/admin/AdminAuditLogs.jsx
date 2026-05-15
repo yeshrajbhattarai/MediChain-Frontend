@@ -50,24 +50,27 @@ export default function AdminAuditLogs() {
     loadLogs()
   }, [])
 
-  const loadLogs = async () => {
+const loadLogs = async () => {
 
-    try {
+  try {
 
-      const res = await getAuditLogs()
+    setLoading(true)
 
-      setLogs(Array.isArray(res) ? res : [])
+    const res = await getAuditLogs()
 
-    } catch (err) {
+    setLogs(Array.isArray(res) ? res : [])
 
-      console.error(err)
+  } catch (err) {
 
-    } finally {
+    console.error('Failed to load audit logs:', err)
+    setLogs([])
 
-      setLoading(false)
+  } finally {
 
-    }
+    setLoading(false)
+
   }
+}
 
   const filteredLogs = useMemo(() => {
 
@@ -130,7 +133,7 @@ const stats = {
 
   return (
 
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-5">
 
       {/* Header */}
 
@@ -140,12 +143,12 @@ const stats = {
 
           <div className="flex items-center gap-3">
 
-            <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
               <Activity size={24} />
             </div>
 
             <div>
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
                 Audit Center
               </h1>
 
@@ -166,7 +169,7 @@ const stats = {
 
         <button
           onClick={() => setSeverityFilter('ALL')}
-          className="bg-white border border-slate-200 rounded-3xl p-6 text-left hover:shadow-md transition"
+          className="bg-white border border-slate-200 rounded-2xl p-5 text-left hover:shadow-md transition"
         >
 
           <div className="flex items-center justify-between">
@@ -176,7 +179,7 @@ const stats = {
                 Total Logs
               </p>
 
-              <h2 className="text-3xl sm:text-4xl font-bold mt-4 text-slate-900">
+              <h2 className="text-2xl sm:text-3xl font-bold mt-4 text-slate-900">
                 {stats.total}
               </h2>
             </div>
@@ -191,7 +194,7 @@ const stats = {
 
         <button
           onClick={() => setSeverityFilter('CRITICAL')}
-          className="bg-red-50 border border-red-100 rounded-3xl p-6 text-left hover:shadow-md transition"
+          className="bg-red-50 border border-red-100 rounded-2xl p-5 text-left hover:shadow-md transition"
         >
 
           <div className="flex items-center justify-between">
@@ -201,8 +204,8 @@ const stats = {
                 CRITICAL Severity
               </p>
 
-              <h2 className="text-3xl sm:text-4xl font-bold mt-4 text-red-700">
-                {stats.CRITICAL}
+              <h2 className="text-2xl sm:text-3xl font-bold mt-4 text-red-700">
+                {stats.critical}
               </h2>
             </div>
 
@@ -216,7 +219,7 @@ const stats = {
 
         <button
           onClick={() => setSeverityFilter('WARNING')}
-          className="bg-yellow-50 border border-yellow-100 rounded-3xl p-6 text-left hover:shadow-md transition"
+          className="bg-yellow-50 border border-yellow-100 rounded-2xl p-5 text-left hover:shadow-md transition"
         >
 
           <div className="flex items-center justify-between">
@@ -226,8 +229,8 @@ const stats = {
                 WARNING Severity
               </p>
 
-              <h2 className="text-3xl sm:text-4xl font-bold mt-4 text-yellow-800">
-                {stats.WARNING}
+              <h2 className="text-2xl sm:text-3xl font-bold mt-4 text-yellow-800">
+                {stats.warning}
               </h2>
             </div>
 
@@ -241,7 +244,7 @@ const stats = {
 
         <button
           onClick={() => setSeverityFilter('INFO')}
-          className="bg-blue-50 border border-blue-100 rounded-3xl p-6 text-left hover:shadow-md transition"
+          className="bg-blue-50 border border-blue-100 rounded-2xl p-5 text-left hover:shadow-md transition"
         >
 
           <div className="flex items-center justify-between">
@@ -251,8 +254,8 @@ const stats = {
                 INFO Severity
               </p>
 
-              <h2 className="text-3xl sm:text-4xl font-bold mt-4 text-blue-800">
-                {stats.INFO}
+              <h2 className="text-2xl sm:text-3xl font-bold mt-4 text-blue-800">
+               {stats.info}
               </h2>
             </div>
 
@@ -294,7 +297,7 @@ const stats = {
             <button
               key={level}
               onClick={() => setSeverityFilter(level)}
-              className={`px-4 py-2 rounded-2xl text-sm font-WARNING border transition ${
+              className={`px-4 py-2 rounded-2xl text-sm font-medium border transition ${
                 severityFilter === level
                   ? 'bg-slate-900 text-white border-slate-900'
                   : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -326,7 +329,7 @@ const stats = {
 
             <div
               key={log.log_id}
-              className={`rounded-3xl border p-5 sm:p-6 transition ${style.card}`}
+              className={`rounded-2xl border p-4 sm:p-5 transition ${style.card}`}
             >
 
               <div className="flex flex-col gap-5">
@@ -361,7 +364,7 @@ const stats = {
 
                           <User2 size={16} className="text-slate-400" />
 
-                          <p className="font-WARNING text-slate-800">
+                          <p className="font-medium text-slate-800">
                             {log.performed_by}
                           </p>
 
@@ -379,7 +382,7 @@ const stats = {
 
                           <FileWarning size={16} className="text-slate-400" />
 
-                          <p className="font-WARNING text-slate-800 break-all">
+                          <p className="font-medium text-slate-800 break-all">
                             {log.consent_id || '-'}
                           </p>
 
@@ -397,7 +400,7 @@ const stats = {
 
                           <Clock3 size={16} className="text-slate-400" />
 
-                          <p className="font-WARNING text-slate-800">
+                          <p className="font-medium text-slate-800">
                             {new Date(log.timestamp).toLocaleString()}
                           </p>
 
@@ -413,7 +416,7 @@ const stats = {
                     onClick={() =>
                       setExpanded(isExpanded ? null : log.log_id)
                     }
-                    className="self-start px-4 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2 text-sm font-WARNING"
+                    className="self-start px-4 py-2 rounded-2xl border border-slate-200 bg-white hover:bg-slate-50 transition flex items-center gap-2 text-sm font-medium"
                   >
 
                     Details
@@ -431,7 +434,7 @@ const stats = {
 
                 {isExpanded && (
 
-                  <div className="bg-white/70 border border-white rounded-2xl p-5 space-y-4">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
 
                     <div>
 

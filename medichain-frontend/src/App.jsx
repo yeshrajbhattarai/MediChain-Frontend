@@ -50,11 +50,14 @@ import NurseProfile from './pages/nurses/Profile'
 import PatientLayout from './components/layout/PatientLayout'
 import PatientDashboard from './pages/patient/PatientDashboard'
 import PatientRecords from './pages/patient/PatientRecords'
-import PatientRecordDetail from './pages/patient/PatientRecordDetail'
+import PatientLabRecordDetail from './pages/patient/PatientLabRecordDetail'
+import PatientMedicalRecordDetail from './pages/patient/PatientMedicalRecordDetail'
 import PatientProfile from './pages/patient/PatientProfile'
 import PatientConsent from './pages/patient/PatientConsent'
 
 import Consent from './pages/shared/Consent'
+import TransferredRecordsPage from './pages/shared/TransferredRecordsPage'
+import TransferredRecordDetail from './pages/shared/TransferredRecordDetail'
 
 const Placeholder = ({ name }) => (
   <div className="p-8 text-gray-500 text-lg">{name} — coming soon</div>
@@ -82,6 +85,15 @@ export default function App() {
           <Route path="consent"     element={<Consent />} />
           <Route path="profile"     element={<AdminProfile />} />
           <Route path="audit-logs" element={<AdminAuditLogs />}/>
+          <Route
+              path="transfers/:consentId"
+              element={<TransferredRecordsPage />}
+            />
+
+          <Route
+              path="transfers/:consentId/record/:recordId"
+              element={<TransferredRecordDetail />}
+            />
 
         </Route>
       </Route>
@@ -103,6 +115,15 @@ export default function App() {
             element={<DoctorReportViewer />}
           />
           <Route path="consent" element={<Consent />} />
+          <Route
+              path="transfers/:consentId"
+              element={<TransferredRecordsPage />}
+            />
+
+            <Route
+              path="transfers/:consentId/record/:recordId"
+              element={<TransferredRecordDetail />}
+            />
 
           <Route path="labs" element={<DoctorLabs />} />
           <Route path="lab-reports" element={<DoctorLabReports />} />
@@ -157,8 +178,13 @@ export default function App() {
           <Route path="records" element={<PatientRecords />} />
 
           <Route
-            path="records/:recordId"
-            element={<PatientRecordDetail />}
+            path="/patient/lab-records/:recordId"
+            element={<PatientLabRecordDetail />}
+          />
+
+          <Route
+            path="/patient/medical-records/:recordId"
+            element={<PatientMedicalRecordDetail />}
           />
 
           <Route path="consent" element={<PatientConsent />} />

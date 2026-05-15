@@ -18,16 +18,47 @@ export const updatePatientPassword = (body) =>
 export const getPatientRecords = () =>
   get('/api/v1/patient/records/')
 
-export const getPatientRecord = (recordId, version = null) => {
-  const query = version ? `?v=${encodeURIComponent(version)}` : ''
-  return get(`/api/v1/patient/records/${recordId}/${query}`)
+export const getPatientLabRecord = (
+  recordId,
+  version = null
+) => {
+
+  const query = version
+    ? `?v=${encodeURIComponent(version)}`
+    : ''
+
+  return get(
+    `/api/v1/patient/lab-records/${recordId}/${query}`
+  )
 }
 
-export const getPatientRecordDetail = (recordId, version = null) =>
-  getPatientRecord(recordId, version)
+export const getPatientLabRecordHistory = (
+  recordId
+) =>
+  get(
+    `/api/v1/patient/lab-records/${recordId}/history/`
+  )
 
-export const getPatientRecordHistory = (recordId) =>
-  get(`/api/v1/patient/records/${recordId}/history/`)
+export const getPatientMedicalRecord = (
+  recordId,
+  version = null
+) => {
+
+  const query = version
+    ? `?v=${encodeURIComponent(version)}`
+    : ''
+
+  return get(
+    `/api/v1/patient/medical-records/${recordId}/${query}`
+  )
+}
+
+export const getPatientMedicalRecordHistory = (
+  recordId
+) =>
+  get(
+    `/api/v1/patient/medical-records/${recordId}/history/`
+  )
 
 export const getPatientConsents = () =>
   get('/api/consent/patient/consents/')

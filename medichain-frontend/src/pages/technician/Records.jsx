@@ -176,7 +176,7 @@ function RecordDetailModal({ recordId, listRecord, open, onClose, onUpdated }) {
               </button>
             )}
             <h2 className="text-base font-semibold text-gray-900">
-              {step === 'edit' ? 'Edit Record' : 'Medical Record Details'}
+              {step === 'edit' ? 'Edit Record' : 'Lab Report Details'}
             </h2>
           </div>
           <button
@@ -545,7 +545,7 @@ export default function TechnicianRecords() {
       <div>
         <h1 className="text-xl font-semibold text-gray-900">My Records</h1>
         <p className="text-sm text-gray-400 mt-0.5">
-          Medical records you have created from lab requests.
+          Lab Reports you have created from lab requests.
         </p>
       </div>
 

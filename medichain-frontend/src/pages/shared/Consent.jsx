@@ -13,7 +13,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { fetchWithAuth } from '../../api/client'
-
+import { useNavigate } from 'react-router-dom'
+import {
+  getUserType,
+  getStaffRole,
+} from '../../auth_store/authStore'
 const api = (url, opts = {}) =>
   fetchWithAuth(`/api${url}`, {
     ...opts,
@@ -22,7 +26,10 @@ const api = (url, opts = {}) =>
       ...opts.headers,
     },
   })
-
+import {
+  writeTransfer,
+  resolveRole,
+} from './transferUtils'
 // ─── Status config ─────────────────────────────────────────────────────────────
 
 const STATUS = {
@@ -121,6 +128,7 @@ function Field({ label, value, mono = false }) {
 // ─── Consent Detail Modal ──────────────────────────────────────────────────────
 
 function ConsentDetailModal({ consentId, activeTab, open, onClose, onRefresh }) {
+  const navigate = useNavigate()
   const [detail,      setDetail]      = useState(null)
   const [loading,     setLoading]     = useState(false)
   const [deciding,    setDeciding]    = useState(false)
@@ -271,26 +279,37 @@ function ConsentDetailModal({ consentId, activeTab, open, onClose, onRefresh }) 
 
           {/* Fetched record data */}
           {fetchedData && (
-            <div className="pt-2 border-t border-gray-100 space-y-3">
-              <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Fetched Record</p>
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3 max-h-60 overflow-y-auto">
-                {Object.entries(fetchedData).map(([key, val]) => (
-                  <div key={key}>
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">
-                      {key.replace(/_/g, ' ')}
-                    </p>
-                    <p className="text-sm text-gray-800 font-mono break-all">
-                      {typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val ?? '—')}
-                    </p>
-                  </div>
-                ))}
+            <div className="pt-4 border-t border-gray-100 space-y-4">
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+
+                <p className="text-sm font-semibold text-emerald-800">
+                  Records fetched successfully
+                </p>
+
+                <p className="text-xs text-emerald-700 mt-1">
+                  {fetchedData.total_records} records securely received from{' '}
+                  {fetchedData.owner_hospital}
+                </p>
+
               </div>
+
               <button
-                onClick={onClose}
-                className="w-full py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                onClick={() => {
+
+                writeTransfer(consentId, fetchedData)
+
+                const role = resolveRole()
+
+                window.location.href =
+                  `/${role}/transfers/${consentId}`
+
+                }}
+                className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-all"
               >
-                Close
+                Open Records
               </button>
+
             </div>
           )}
 
