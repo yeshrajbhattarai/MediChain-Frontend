@@ -572,92 +572,184 @@ return (
 
     )}
 
-    {/* CLINICAL */}
-
-    {tab === 'clinical' && (
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-
-        {schema.map(field => {
-
-      const timelines = [...(record.timeline || [])]
-        .sort((a, b) => a.version_number - b.version_number)
-
-      let value = null
-
-      for (const versionItem of timelines) {
-
-        if (versionItem.version_number > record.version) {
-          break
-        }
-
-        const snapshot = versionItem.data_snapshot || []
-
-        const matched = snapshot.find(
-          item =>
-            item.label?.toLowerCase() === field.label?.toLowerCase()
-        )
-
-        if (matched) {
-
-          if (matched.current_value !== undefined && matched.current_value !== null) {
-            value = matched.current_value
-          }
-
-          else if (matched.value !== undefined && matched.value !== null) {
-            value = matched.value
-          }
-        }
+    {tab === 'clinical' && (() => {
+ 
+  // ── value formatter ────────────────────────────────────────────────────────
+  function formatValue(raw, type) {
+    if (raw === null || raw === undefined || String(raw).trim() === '') return null
+    const str = String(raw).trim()
+    if (type === 'CHOICE' || type === 'TEXT') {
+      return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    }
+    if (type === 'DECIMAL' || type === 'INTEGER') {
+      const n = parseFloat(str)
+      return isNaN(n) ? str : +n.toFixed(6) + ''
+    }
+    return str
+  }
+ 
+  // ── status resolver ────────────────────────────────────────────────────────
+  function getStatus(label, value, type) {
+    if (value === null) return 'unavailable'
+    const lbl = (label || '').toLowerCase()
+    const val = String(value).toLowerCase().trim()
+ 
+    if (type === 'CHOICE' || type === 'TEXT') {
+      const good = ['normal', 'not present', 'notpresent', 'negative', 'none', 'absent']
+      const bad  = ['abnormal', 'present', 'positive', 'ckd', 'yes']
+      if (good.some(k => val === k || val.includes(k))) return 'normal'
+      if (bad.some(k => val === k || val.includes(k)))  return 'abnormal'
+      return 'neutral'
+    }
+ 
+    const num = parseFloat(value)
+    if (isNaN(num)) return 'neutral'
+ 
+    if (lbl === 'sugar' || lbl === 'albumin') {
+      return num === 0 ? 'normal' : num <= 2 ? 'borderline' : 'abnormal'
+    }
+ 
+    const ranges = {
+      'blood glucose random':   [70,    140  ],
+      'blood urea':             [7,     20   ],
+      'serum creatinine':       [0.6,   1.2  ],
+      'sodium':                 [135,   145  ],
+      'potassium':              [3.5,   5.0  ],
+      'haemoglobin':            [11.5,  17.5 ],
+      'hemoglobin':             [11.5,  17.5 ],
+      'packed cell volume':     [36,    50   ],
+      'white blood cell count': [4000,  11000],
+      'red blood cell count':   [3.8,   5.8  ],
+      'specific gravity':       [1.005, 1.030],
+    }
+    const entry = Object.entries(ranges).find(([k]) => lbl.includes(k))
+    if (!entry) return 'neutral'
+    const [lo, hi] = entry[1]
+    if (num < lo) return 'low'
+    if (num > hi) return 'high'
+    return 'normal'
+  }
+ 
+  const S = {
+    normal:      { label: 'Normal',     dot: 'bg-emerald-400', text: 'text-emerald-700', pill: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200', row: '' },
+    abnormal:    { label: 'Abnormal',   dot: 'bg-rose-500',    text: 'text-rose-700',    pill: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',           row: 'bg-rose-50/40' },
+    high:        { label: 'High',       dot: 'bg-rose-500',    text: 'text-rose-700',    pill: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',           row: 'bg-rose-50/40' },
+    low:         { label: 'Low',        dot: 'bg-blue-400',    text: 'text-blue-700',    pill: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',           row: 'bg-blue-50/30' },
+    borderline:  { label: 'Borderline', dot: 'bg-amber-400',   text: 'text-amber-700',   pill: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',        row: 'bg-amber-50/30' },
+    neutral:     { label: '—',          dot: 'bg-gray-300',    text: 'text-gray-400',    pill: 'bg-gray-100 text-gray-400',                               row: '' },
+    unavailable: { label: 'No data',    dot: 'bg-gray-200',    text: 'text-gray-300',    pill: 'bg-gray-50 text-gray-300',                                row: '' },
+  }
+ 
+  // ── resolve rows ───────────────────────────────────────────────────────────
+  const timelines = [...(record.timeline || [])].sort((a, b) => a.version_number - b.version_number)
+ 
+  const rows = schema.map(field => {
+    let raw = null
+    for (const v of timelines) {
+      if (v.version_number > record.version) break
+      const m = (v.data_snapshot || []).find(
+        i => i.label?.toLowerCase() === field.label?.toLowerCase()
+      )
+      if (m) {
+        const val = m.current_value ?? m.value
+        if (val !== undefined && val !== null) raw = val
       }
-
-          const status = getValueStatus(value)
-
-          return (
-
-            <div
-              key={field.key}
-              className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-all"
-            >
-
-              <div className="flex items-start justify-between mb-5">
-
-                <div>
-                  <p className="text-xs uppercase tracking-wider text-gray-400 mb-2">
-                    {field.type || 'Clinical Field'}
-                  </p>
-
-                  <h3 className="font-semibold text-slate-900">
-                    {field.label}
-                  </h3>
-                </div>
-
-                <div className={`px-2 py-1 rounded-full border text-xs font-medium ${status.color}`}>
-                  {status.label}
-                </div>
-
-              </div>
-
-              <div className="flex items-end justify-between">
-
-                <div className="text-3xl font-bold text-slate-900">
-                  {value || '—'}
-                </div>
-
-                <div className="text-sm text-gray-400">
-                  {field.unit || ''}
-                </div>
-
-              </div>
-
-            </div>
-
-          )
-        })}
-
+    }
+    const formatted = formatValue(raw, field.type)
+    const status    = getStatus(field.label, formatted, field.type)
+    return { field, formatted, status }
+  })
+ 
+  const flagged = rows.filter(r => ['abnormal','high','low','borderline'].includes(r.status)).length
+ 
+  // ── single cell component ──────────────────────────────────────────────────
+  function FieldCell({ field, formatted, status }) {
+    const s = S[status]
+    const isFlagged = ['abnormal','high','low','borderline'].includes(status)
+    const isUnavailable = formatted === null
+ 
+    return (
+      <div className={`
+        flex items-center gap-2 px-3 py-2 rounded-lg
+        ${s.row} ${isFlagged ? 'hover:brightness-95' : 'hover:bg-gray-50'}
+        transition-colors cursor-default
+      `}>
+        {/* dot */}
+        <span className={`shrink-0 w-2 h-2 rounded-full ${s.dot}`} />
+ 
+        {/* label */}
+        <span className="flex-1 text-sm font-medium text-gray-700 truncate min-w-0">
+          {field.label}
+        </span>
+ 
+        {/* value + unit */}
+        <span className={`text-sm font-semibold shrink-0 ${isFlagged ? s.text : 'text-gray-800'}`}>
+          {isUnavailable ? (
+            <span className="text-gray-300 font-normal">—</span>
+          ) : (
+            <>
+              {formatted}
+              {field.unit && (
+                <span className="ml-0.5 text-xs font-normal text-gray-400">{field.unit}</span>
+              )}
+            </>
+          )}
+        </span>
+ 
+        {/* badge */}
+        <span className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${s.pill}`}>
+          {s.label}
+        </span>
       </div>
-
-    )}
-
+    )
+  }
+ 
+  // ── render ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+ 
+      {/* header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-gray-50/60">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Clinical Parameters
+          </span>
+          <span className="text-xs text-gray-400">{rows.length} fields</span>
+          {flagged > 0 && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-200">
+              {flagged} flagged
+            </span>
+          )}
+        </div>
+        {/* legend */}
+        <div className="hidden sm:flex items-center gap-3">
+          {['normal','high','low','abnormal','borderline'].map(k => (
+            <span key={k} className="flex items-center gap-1 text-[11px] text-gray-400">
+              <span className={`w-2 h-2 rounded-full ${S[k].dot}`} />
+              {S[k].label}
+            </span>
+          ))}
+        </div>
+      </div>
+ 
+      {/* 2-column grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-1 p-3">
+        {rows.map(({ field, formatted, status }, i) => (
+          <FieldCell key={field.key || i} field={field} formatted={formatted} status={status} />
+        ))}
+        {/* if odd number of rows, fill the last cell so grid doesn't look broken */}
+        {rows.length % 2 !== 0 && <div />}
+      </div>
+ 
+      {rows.length === 0 && (
+        <div className="py-12 text-center text-gray-400">
+          <p className="text-2xl mb-2">🧪</p>
+          <p className="text-sm">No clinical data recorded.</p>
+        </div>
+      )}
+    </div>
+  )
+})()}
     {/* AUDIT */}
 
     {tab === 'audit' && (

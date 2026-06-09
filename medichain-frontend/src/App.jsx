@@ -3,6 +3,7 @@ import Landing    from './pages/Landing'
 
 import Login      from './pages/auth/Login'
 import Register   from './pages/auth/Register'
+import ForgetPassword from './pages/auth/ForgetPassword'
 
 import AdminLayout  from './components/layout/AdminLayout'
 import DoctorLayout from './components/layout/DoctorLayout'
@@ -46,7 +47,7 @@ import NurseQueueDetail from './pages/nurses/QueueDetail'
 import NurseRecords from './pages/nurses/Records'
 import NurseProfile from './pages/nurses/Profile'
 
-
+import PatientRegister from './pages/auth/PatientRegister'
 import PatientLayout from './components/layout/PatientLayout'
 import PatientDashboard from './pages/patient/PatientDashboard'
 import PatientRecords from './pages/patient/PatientRecords'
@@ -71,6 +72,8 @@ export default function App() {
       <Route path="/"         element={<Landing />} />
       <Route path="/login"    element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path= "/forgetpassword" element = {<ForgetPassword />} />
+      <Route path="/patient/register" element={<PatientRegister />}/>
 
       {/* Admin — hospital_admin only */}
       <Route element={<ProtectedRoute allowedRoles={['hospital_admin']} />}>

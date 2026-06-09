@@ -65,3 +65,6 @@ export const getPatientConsents = () =>
 
 export const submitPatientDecision = (consentId, patient_choice) =>
   patch(`/api/consent/${consentId}/patient-decision/`, { patient_choice })
+
+export const patientRegister = (body) =>
+  post('/api/v1/patient/register/', body)

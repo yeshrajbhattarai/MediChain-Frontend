@@ -109,10 +109,34 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="mt-6 text-sm text-gray-500">
-            New hospital?{' '}
-            <Link to="/register" className="text-blue-600 hover:underline font-medium">Register here</Link>
-          </p>
+          {isPatient ? (
+            <p className="mt-6 text-sm text-gray-500 text-center">
+              New patient?{' '}
+              <Link
+                to="/patient/register"
+                className="text-blue-600 hover:underline font-medium"
+              >
+                Create account
+              </Link>
+            </p>
+          ) : (
+            <p className="mt-6 text-sm text-gray-500 text-center">
+              New hospital?{' '}
+              <Link
+                to="/register"
+                className="text-blue-600 hover:underline font-medium"
+              >
+                Register here
+              </Link>
+              <br />
+              <Link
+                to="/forgetpassword"
+                className="text-blue-600 hover:underline font-medium"
+              >
+                Reset Password
+              </Link>
+            </p>
+          )}
         </div>
       </div>
 
